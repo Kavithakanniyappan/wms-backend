@@ -2,33 +2,30 @@ import mongoose from "mongoose";
 
 const packInSchema = new mongoose.Schema({
 
-  pack_in_id: { type: String, unique: true },
+  pack_in_id: String,
 
-  customer_name: { type: String },
+  invoice_type: { type: String, enum: ["CUSTOMER", "BARCODE"] },
 
-  invoice_number: { type: String },
+  customer_id: String,
+  customer_name: String,
+  invoice_number: String,
+  invoice_barcode: String,
 
-  package_id: { type: String },
+  pack_id: String,
+  pack_name: String,
 
-  quantity: { type: Number },
+  package_id: String,
+  quantity_barcode: String,
+  quantity: Number,
 
-  rack_id: { type: String },
+  rack_id: String,
+  rack_status: String,
 
-  is_deleted: {
-    type: Boolean,
-    default: false
-  },
+  notes: String,
+  status: { type: String, default: "COMPLETED" },
 
-  created_at: {
-    type: Date,
-    default: Date.now
-  },
+  is_deleted: { type: Boolean, default: false }
 
-  updated_at: {
-    type: Date,
-    default: Date.now
-  }
+}, { timestamps: true });
 
-});
-
-export default mongoose.model("pack_in", packInSchema, "pack_in");
+export default mongoose.model("PackIn", packInSchema, "pack_in");
