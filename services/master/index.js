@@ -1,0 +1,284 @@
+import Master from "../../models/master/index.js";
+import { v4 as uuidv4 } from "uuid";
+
+const masterService = {
+// CREATE
+async createCustomerMaster(req, res) {
+  try {
+    const data = req.body;
+
+    const requiredFields = ["customer_name", "customer_code"];
+
+    for (const field of requiredFields) {
+      if (!data[field]) {
+        return res.status(400).json({
+          status: "error",
+          message: `Missing field: ${field}`
+        });
+      }
+    }
+
+    const customer = new Master({
+      type: "CUSTOMER",
+      customer: {
+        customer_id: `CUST_${uuidv4()}`,
+        customer_name: data.customer_name,
+        customer_code: data.customer_code,
+        contact_person: data.contact_person,
+        contact_number: data.contact_number,
+        email: data.email,
+        address: data.address,
+        status:data.status
+      }
+    });
+
+    await customer.save();
+
+    return res.status(201).json({
+      status: "success",
+      message: "Customer created"
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+},
+
+// LIST
+async listCustomerMaster(req, res) {
+  try {
+    const data = await Master.find({ type: "CUSTOMER" });
+
+    return res.status(200).json({
+      status: "success",
+      data
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+},
+
+// GET BY ID
+async getCustomerMasterById(req, res) {
+  try {
+    const data = await Master.findById(req.params.id);
+
+    return res.status(200).json({ data });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+},
+
+// UPDATE
+async updateCustomerMaster(req, res) {
+  try {
+    const data = await Master.findByIdAndUpdate(
+      req.params.id,
+      { $set: { customer: req.body } },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      status: "success",
+      data
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+},
+
+// DELETE
+async deleteCustomerMaster(req, res) {
+  try {
+    await Master.findByIdAndDelete(req.params.id);
+
+    return res.status(200).json({
+      status: "success",
+      message: "Deleted"
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+},
+
+/* =====================================================
+   🔥 PACK SERVICES
+===================================================== */
+
+// CREATE
+async createPackMaster(req, res) {
+  try {
+    const data = req.body;
+
+    const requiredFields = ["pack_name", "customer_id", "uom"];
+
+    for (const field of requiredFields) {
+      if (!data[field]) {
+        return res.status(400).json({
+          status: "error",
+          message: `Missing field: ${field}`
+        });
+      }
+    }
+
+    const pack = new Master({
+      type: "PACK",
+      pack: {
+        pack_id: `PACK_${uuidv4()}`,
+        pack_name: data.pack_name,
+        customer_id: data.customer_id,
+        uom: data.uom,
+        description: data.description,
+        barcode:data.barcode,
+        status:data.status
+      }
+    });
+
+    await pack.save();
+
+    return res.status(201).json({
+      status: "success",
+      message: "Pack created"
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+},
+
+// LIST
+async listPackMaster(req, res) {
+  try {
+    const data = await Master.find({ type: "PACK" });
+
+    return res.status(200).json({
+      status: "success",
+      data
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+},
+
+// GET BY ID
+async getPackMasterById(req, res) {
+  try {
+    const data = await Master.findById(req.params.id);
+
+    return res.status(200).json({ data });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+},
+
+// UPDATE
+async updatePackMaster(req, res) {
+  try {
+    const data = await Master.findByIdAndUpdate(
+      req.params.id,
+      { $set: { pack: req.body } },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      status: "success",
+      data
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+},
+
+// DELETE
+async deletePackMaster(req, res) {
+  try {
+    await Master.findByIdAndDelete(req.params.id);
+
+    return res.status(200).json({
+      status: "success",
+      message: "Deleted"
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+},
+async customerDropdown(req, res) {
+  try {
+    const data = await Master.find(
+      { type: "CUSTOMER" },
+      { "customer.customer_id": 1, "customer.customer_name": 1 }
+    );
+
+    const result = data.map(item => ({
+      label: item.customer?.customer_name,
+      value: item.customer?.customer_id
+    }));
+
+    return res.status(200).json({
+      status: "success",
+      data: result
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+},
+async statusDropdown(req, res) {
+  try {
+    const result = [
+      { label: "Active", value: "Active" },
+      { label: "Inactive", value: "Inactive" }
+    ];
+
+    return res.status(200).json({
+      status: "success",
+      data: result
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+},
+async commonFilter(req, res) {
+  try {
+    const { type, customer_name, pack_name } = req.query;
+
+    let query = {};
+
+    if (type === "CUSTOMER") {
+      query.type = "CUSTOMER";
+      if (customer_name) {
+        query["customer.customer_name"] = { $regex: customer_name, $options: "i" };
+      }
+    }
+
+    if (type === "PACK") {
+      query.type = "PACK";
+      if (pack_name) {
+        query["pack.pack_name"] = { $regex: pack_name, $options: "i" };
+      }
+    }
+
+    const data = await Master.find(query);
+
+    return res.status(200).json({
+      status: "success",
+      data
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+}
+
+};
+
+export default masterService;

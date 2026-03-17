@@ -3,183 +3,156 @@ import { v4 as uuidv4 } from "uuid";
 
 const packInService = {
 
-async createPackIn(req,res){
+/* ================= CREATE ================= */
+async createPackIn(req, res) {
+  try {
 
-try{
+    const data = req.body;
 
-const data=req.body;
+    const requiredFields = [
+      "invoice_type",
+      "pack_id",
+      "package_id",
+      "quantity",
+      "rack_id"
+    ];
 
-const requiredFields=[
-"customer_name",
-"invoice_number",
-"package_id",
-"quantity",
-"rack_id"
-];
+    for (const field of requiredFields) {
+      if (!data[field]) {
+        return res.status(400).json({
+          status: "error",
+          message: `Missing field: ${field}`
+        });
+      }
+    }
 
-for(const field of requiredFields){
+    if (data.invoice_type === "CUSTOMER") {
+      if (!data.customer_id || !data.invoice_number) {
+        return res.status(400).json({
+          message: "Customer & Invoice required"
+        });
+      }
+    }
 
-if(!data[field]){
+    if (data.invoice_type === "BARCODE") {
+      if (!data.invoice_barcode) {
+        return res.status(400).json({
+          message: "Invoice barcode required"
+        });
+      }
+    }
 
-return res.status(400).json({
-status:"error",
-code:400,
-message:`Missing required field: ${field}`,
-data:null
-})
+    const pack = new PackIn({
+      pack_in_id: `PACKIN_${uuidv4()}`,
 
-}
+      invoice_type: data.invoice_type,
 
-}
+      customer_id: data.customer_id,
+      customer_name: data.customer_name,
+      invoice_number: data.invoice_number,
+      invoice_barcode: data.invoice_barcode,
 
-const packInData={
+      pack_id: data.pack_id,
+      pack_name: data.pack_name,
 
-pack_in_id:`packin_${uuidv4()}`,
-customer_name:data.customer_name,
-invoice_number:data.invoice_number,
-package_id:data.package_id,
-quantity:data.quantity,
-rack_id:data.rack_id
+      package_id: data.package_id,
+      quantity_barcode: data.quantity_barcode,
+      quantity: data.quantity,
 
-};
+      rack_id: data.rack_id,
+      rack_status: data.rack_status,
 
-const pack=new PackIn(packInData);
+      notes: data.notes
+    });
 
-await pack.save();
+    await pack.save();
 
-return res.status(201).json({
-status:"success",
-code:201,
-message:"Pack IN created successfully",
-data:null
-});
+    return res.status(201).json({
+      message: "Pack IN created successfully"
+    });
 
-}
-catch(err){
-
-return res.status(500).json({
-status:"error",
-code:500,
-message:err.message,
-data:null
-})
-
-}
-
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 },
 
-async listPackIn(req,res){
+/* ================= LIST ================= */
+async listPackIn(req, res) {
+  try {
 
-try{
+    const data = await PackIn.find({ is_deleted: false });
 
-const packs=await PackIn.find({is_deleted:false});
+    return res.status(200).json({
+      data
+    });
 
-return res.status(200).json({
-status:"success",
-code:200,
-message:"Pack IN list fetched",
-data:packs
-})
-
-}
-catch(err){
-
-return res.status(500).json({
-status:"error",
-code:500,
-message:err.message
-})
-
-}
-
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 },
 
-async getPackInById(req,res){
+/* ================= GET BY ID ================= */
+async getPackInById(req, res) {
+  try {
 
-try{
+    const { id } = req.query;
 
-const {id}=req.query;
+    if (!id) {
+      return res.status(400).json({ message: "ID is required" });
+    }
 
-const pack=await PackIn.findOne({_id:id,is_deleted:false});
+    const data = await PackIn.findById(id);
 
-if(!pack){
+    return res.status(200).json({ data });
 
-return res.status(404).json({
-status:"error",
-message:"Pack IN not found"
-})
-
-}
-
-return res.status(200).json({
-status:"success",
-data:pack
-})
-
-}
-catch(err){
-
-return res.status(500).json({
-status:"error",
-message:err.message
-})
-
-}
-
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 },
 
-async updatePackIn(req,res){
+/* ================= UPDATE ================= */
+async updatePackIn(req, res) {
+  try {
 
-try{
+    const { id } = req.params;
 
-const {id}=req.params;
+    const data = await PackIn.findByIdAndUpdate(
+      id,
+      { $set: req.body },
+      { new: true }
+    );
 
-await PackIn.findByIdAndUpdate(id,{
-$set:req.body
-});
+    return res.status(200).json({
+      message: "Updated successfully",
+      data
+    });
 
-return res.status(200).json({
-status:"success",
-message:"Pack IN updated"
-})
-
-}
-catch(err){
-
-return res.status(500).json({
-status:"error",
-message:err.message
-})
-
-}
-
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 },
 
-async deletePackIn(req,res){
+/* ================= DELETE ================= */
+async deletePackIn(req, res) {
+  try {
 
-try{
+    const { id } = req.query;
 
-const {id}=req.query;
+    if (!id) {
+      return res.status(400).json({ message: "ID is required" });
+    }
 
-await PackIn.findByIdAndUpdate(id,{
-is_deleted:true
-});
+    await PackIn.findByIdAndUpdate(id, {
+      is_deleted: true
+    });
 
-return res.status(200).json({
-status:"success",
-message:"Pack IN deleted"
-})
+    return res.status(200).json({
+      message: "Deleted successfully"
+    });
 
-}
-catch(err){
-
-return res.status(500).json({
-status:"error",
-message:err.message
-})
-
-}
-
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 }
 
 };
