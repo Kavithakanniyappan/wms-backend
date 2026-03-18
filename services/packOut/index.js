@@ -38,7 +38,8 @@ pack_out_id:`packout_${uuidv4()}`,
 invoice_number:data.invoice_number,
 package_id:data.package_id,
 quantity:data.quantity,
-rack_id:data.rack_id
+rack_id:data.rack_id,
+part_number:data.part_number
 
 };
 
@@ -181,7 +182,6 @@ message:err.message
 
 },
 async getPackDetails(req, res) {
-
   try {
 
     const { invoice_number } = req.query;
@@ -193,12 +193,13 @@ async getPackDetails(req, res) {
       });
     }
 
+    // 🔥 FIX: use nested field
     const pack = await PackIn.findOne({
-      invoice_number: invoice_number,
+      "invoice.invoice_number": invoice_number,
       is_deleted: false
     });
 
-    // If invoice not found
+    // If not found
     if (!pack) {
       return res.status(200).json({
         status: "success",
@@ -207,54 +208,63 @@ async getPackDetails(req, res) {
       });
     }
 
-    // If invoice found
+    // If found
     return res.status(200).json({
       status: "success",
       keyframe: true,
       data: {
-        invoice_number: pack.invoice_number,
-        package_id: pack.package_id,
-        rack_id: pack.rack_id,
-        quantity: pack.quantity
+        invoice_number: pack.invoice?.invoice_number,
+        customer_name: pack.invoice?.customer_name,
+        part_number: pack.part?.part_number,
+        package_id: pack.package?.package_id,
+        quantity: pack.package?.quantity,
+        rack_id: pack.rack?.rack_id
       }
     });
 
   } catch (err) {
-
     return res.status(500).json({
       status: "error",
       message: err.message
     });
-
   }
-
 },
-async invoiceDropdown(req,res){
+async invoiceDropdown(req, res) {
+  try {
 
-try{
+    // Fetch only CUSTOMER type invoices
+    const invoices = await PackIn.find(
+      { 
+        type: "CUSTOMER", 
+        is_deleted: false 
+      },
+      { 
+        "invoice.invoice_number": 1,
+        "invoice.customer_name": 1,
+        "part.part_number": 1,
+        _id: 0
+      }
+    );
 
-const invoices = await PackIn.find(
- { is_deleted:false },
- { invoice_number:1,_id:0 }
-);
+    // Format response (clean structure for UI)
+    const formattedData = invoices.map(item => ({
+      invoice_number: item.invoice?.invoice_number,
+      customer_name: item.invoice?.customer_name,
+      part_number: item.part?.part_number
+    }));
 
-return res.status(200).json({
-status:"success",
-data:invoices
-});
+    return res.status(200).json({
+      status: "success",
+      data: formattedData
+    });
 
+  } catch (err) {
+    return res.status(500).json({
+      status: "error",
+      message: err.message
+    });
+  }
 }
-catch(err){
-
-return res.status(500).json({
-status:"error",
-message:err.message
-});
-
-}
-
-}
-
 };
 
 export default packOutService;
