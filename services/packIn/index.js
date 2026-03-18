@@ -50,7 +50,7 @@ const packInService = {
         },
         rack: {
           rack_id: data.rack_id,
-          rack_status: data.rack_status
+          //rack_status: data.rack_status
         },
         completion: {
           notes: data.notes
@@ -199,7 +199,7 @@ const packInService = {
         },
         rack: {
           rack_id: data.rack_id,
-          rack_status: data.rack_status
+          //rack_status: data.rack_status
         },
         completion: {
           notes: data.notes

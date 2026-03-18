@@ -6,28 +6,28 @@ const packInSchema = new mongoose.Schema({
 
   // invoice
   invoice: {
-    customer_id: { type: String, default: null },
-    customer_name: { type: String, default: null },
-    invoice_number: { type: String, default: null },
-    invoice_barcode: { type: String, default: null }
+    customer_id: { type: String },
+    customer_name: { type: String },
+    invoice_number: { type: String },
+    invoice_barcode: { type: String }
   },
 
   // ✅ Plain object (NO sub-schema → NO _id)
   part: {
     pack_id: { type: String, unique: true },
-    pack_name: { type: String, default: null },
-    part_number: { type: String, default: null }
+    pack_name: { type: String},
+    part_number: { type: String }
   },
 
   package: {
-    package_id: { type: String, default: null },
-    quantity_barcode: { type: String, default: null },
-    quantity: { type: Number, default: null }
+    package_id: { type: String },
+    quantity_barcode: { type: String },
+    quantity: { type: Number}
   },
 
   rack: {
-    rack_id: { type: String, default: null },
-    rack_status: { type: String, default: null }
+    rack_id: { type: String},
+    //rack_status: { type: String, default: null }
   },
 
   completion: {
