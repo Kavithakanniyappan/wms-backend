@@ -1,57 +1,44 @@
 import mongoose from "mongoose";
 
-/* ================= CUSTOMER BASED INVOICE ================= */
-const customerInvoiceSchema = new mongoose.Schema({
-  customer_id: { type: String },
-  customer_name: { type: String },
-  invoice_number: { type: String }
-});
-
-/* ================= BARCODE BASED INVOICE ================= */
-const barcodeInvoiceSchema = new mongoose.Schema({
-  invoice_barcode: { type: String } // BC-INV-XXXX
-});
-
-/* ================= PART SCHEMA ================= */
-const partSchema = new mongoose.Schema({
-  pack_id: { type: String },
-  pack_name: { type: String },
-  part_number: { type: String }
-});
-
-/* ================= PACKAGE SCHEMA ================= */
-const packageSchema = new mongoose.Schema({
-  package_id: { type: String },
-  quantity_barcode: { type: String },
-  quantity: { type: Number }
-});
-
-/* ================= RACK SCHEMA ================= */
-const rackSchema = new mongoose.Schema({
-  rack_id: { type: String },
-  rack_status: { type: String }
-});
-
-/* ================= COMPLETION SCHEMA ================= */
-const completionSchema = new mongoose.Schema({
-  notes: { type: String }
-});
-
-/* ================= MAIN PACK-IN SCHEMA ================= */
 const packInSchema = new mongoose.Schema({
+  pack_in_id: { type: String, unique: true },
   type: { type: String }, // "CUSTOMER" or "BARCODE"
 
-  invoice: { 
-    type: mongoose.Schema.Types.Mixed // can store customerInvoiceSchema or barcodeInvoiceSchema
+  // invoice
+  invoice: {
+    customer_id: { type: String, default: null },
+    customer_name: { type: String, default: null },
+    invoice_number: { type: String, default: null },
+    invoice_barcode: { type: String, default: null }
   },
-  part: partSchema,
-  package: packageSchema,
-  rack: rackSchema,
-  completion: completionSchema,
+
+  // ✅ Plain object (NO sub-schema → NO _id)
+  part: {
+    pack_id: { type: String, unique: true },
+    pack_name: { type: String, default: null },
+    part_number: { type: String, default: null }
+  },
+
+  package: {
+    package_id: { type: String, default: null },
+    quantity_barcode: { type: String, default: null },
+    quantity: { type: Number, default: null }
+  },
+
+  rack: {
+    rack_id: { type: String, default: null },
+    rack_status: { type: String, default: null }
+  },
+
+  completion: {
+    notes: { type: String, default: null }
+  },
 
   is_deleted: { type: Boolean, default: false },
+
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
+
 });
 
 export default mongoose.model("PackIn", packInSchema, "pack_in");
