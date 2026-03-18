@@ -1,8 +1,6 @@
 import mongoose from "mongoose";
 
-/* ============================
-   CUSTOMER SCHEMA
-============================ */
+//   CUSTOMER SCHEMA
 const customerSchema = new mongoose.Schema({
   customer_id: { type: String },
   customer_name: { type: String },
@@ -14,22 +12,19 @@ const customerSchema = new mongoose.Schema({
   status: { type: String, default: "Active" }
 });
 
-/* ============================
-   PACK SCHEMA
-============================ */
+//PACK SCHEMA
 const packSchema = new mongoose.Schema({
   pack_id: { type: String },
-  pack_name: { type: String },
+  part_number:{type:String},
+  part_name: { type: String },
   customer_id: { type: String },
   uom: { type: String },
   description: { type: String },
   barcode:{type: String},
   status: { type: String, default: "Active" }
 });
+  // MASTER SCHEMA
 
-/* ============================
-   MASTER SCHEMA
-============================ */
 const masterSchema = new mongoose.Schema({
   type: { type: String }, // CUSTOMER / PACK
 

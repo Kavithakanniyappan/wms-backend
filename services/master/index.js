@@ -129,7 +129,8 @@ async createPackMaster(req, res) {
       type: "PACK",
       pack: {
         pack_id: `PACK_${uuidv4()}`,
-        pack_name: data.pack_name,
+        part_number:data.part_number,
+        part_name: data.part_name,
         customer_id: data.customer_id,
         uom: data.uom,
         description: data.description,
