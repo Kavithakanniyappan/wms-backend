@@ -218,7 +218,7 @@ async getPackDetails(req, res) {
         part_number: pack.part?.part_number,
         package_id: pack.package?.package_id,
         quantity: pack.package?.quantity,
-        rack_id: pack.rack?.rack_id
+        //rack_id: pack.rack?.rack_id
       }
     });
 
