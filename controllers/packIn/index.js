@@ -13,8 +13,9 @@ export const packInController = {
   updateBarcodePackIn: (req, res) => packInService.updateBarcodePackIn(req, res),
   listBarcodePackIn: (req, res) => packInService.listBarcodePackIn(req, res),
   getBarcodePackInById: (req, res) => packInService.getBarcodePackInById(req, res),
-  deleteBarcodePackIn: (req, res) => packInService.deleteBarcodePackIn(req, res) 
-
+  deleteBarcodePackIn: (req, res) => packInService.deleteBarcodePackIn(req, res), 
+  //excel
+  downloadPackInExcel: (req, res) => packInService.downloadPackInExcel(req, res)
 
 };
 

@@ -14,6 +14,9 @@ export const packOutController = {
 
  invoiceDropdown:(req, res) => packOutService.invoiceDropdown(req, res),
 
- getPackDetails:(req, res) => packOutService.getPackDetails(req, res)
+ getPackDetails:(req, res) => packOutService.getPackDetails(req, res),
+
+
+downloadPackOutExcel: (req, res) => packOutService.downloadPackOutExcel(req, res)
 
 };

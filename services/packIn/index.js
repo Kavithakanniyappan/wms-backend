@@ -1,4 +1,5 @@
 import PackIn from "../../models/packIn/index.js";
+import ExcelJS from "exceljs";
 import { v4 as uuidv4 } from "uuid";
 
 const packInService = {
@@ -17,17 +18,17 @@ const packInService = {
         }
       }
 
-      const existing = await PackIn.findOne({
-        "invoice.customer_id": data.customer_id,
-        "invoice.invoice_number": data.invoice_number,
-        "package.package_id": data.package_id,
-        type: "CUSTOMER",
-        is_deleted: false
-      });
+      // const existing = await PackIn.findOne({
+      //   "invoice.customer_id": data.customer_id,
+      //   "invoice.invoice_number": data.invoice_number,
+      //   "package.package_id": data.package_id,
+      //   type: "CUSTOMER",
+      //   is_deleted: false
+      // });
 
-      if (existing) {
-        return res.status(400).json({ message: "Duplicate Customer Pack-In not allowed" });
-      }
+      // if (existing) {
+      //   return res.status(400).json({ message: "Duplicate Customer Pack-In not allowed" });
+      // }
 
       const pack = new PackIn({
         pack_in_id: `PACKIN_${uuidv4()}`,
@@ -168,16 +169,16 @@ const packInService = {
         }
       }
 
-      const existing = await PackIn.findOne({
-        "invoice.invoice_barcode": data.invoice_barcode,
-        "package.package_id": data.package_id,
-        type: "BARCODE",
-        is_deleted: false
-      });
+      // const existing = await PackIn.findOne({
+      //   "invoice.invoice_barcode": data.invoice_barcode,
+      //   "package.package_id": data.package_id,
+      //   type: "BARCODE",
+      //   is_deleted: false
+      // });
 
-      if (existing) {
-        return res.status(400).json({ message: "Duplicate Barcode Pack-In not allowed" });
-      }
+      // if (existing) {
+      //   return res.status(400).json({ message: "Duplicate Barcode Pack-In not allowed" });
+      // }
 
       const pack = new PackIn({
         pack_in_id: `PACKIN_${uuidv4()}`,
@@ -292,7 +293,40 @@ const packInService = {
     } catch (err) {
       return res.status(500).json({ message: err.message });
     }
-  }
+  },
+  
+async downloadPackInExcel(req, res) {
+  const data = await PackIn.find({ is_deleted: false });
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("PackIn");
+
+  sheet.columns = [
+    { header: "Invoice", key: "invoice" },
+    { header: "Package", key: "package" },
+    { header: "Quantity", key: "quantity" },
+    { header: "Rack", key: "rack" }
+  ];
+
+  data.forEach(item => {
+    sheet.addRow({
+      invoice: item.invoice?.invoice_number,
+      package: item.package?.package_id,
+      quantity: item.package?.quantity,
+      rack: item.rack?.rack_id
+    });
+  });
+
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+
+  res.setHeader("Content-Disposition", "attachment; filename=packin.xlsx");
+
+  await workbook.xlsx.write(res);
+  res.end();
+}
 
 };
 

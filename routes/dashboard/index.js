@@ -3,6 +3,9 @@ import dashboardController from "../../controllers/dashboard/index.js";
 
 const router = express.Router();
 
-router.get("/summary", dashboardController.getSummary);
+// 🔹 Dashboard APIs
+router.get("/active-customers", dashboardController.getActiveCustomers);
+router.get("/active-parts", dashboardController.getActiveParts);
+router.get("/today-moves", dashboardController.getTodayMoves);
 
 export default router;

@@ -136,7 +136,7 @@ async createPackMaster(req, res) {
         });
       }
     }
-    // 🔥 DUPLICATE CHECK (PACK)
+    // DUPLICATE CHECK (PACK)
 const existingPack = await Master.findOne({
   type: "PACK",
   "pack.part_number": data.part_number

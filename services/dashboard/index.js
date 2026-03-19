@@ -4,76 +4,55 @@ import PackOut from "../../models/packOut/index.js";
 
 const dashboardService = {
 
-  async getSummary() {
-
+  // 🔹 Active Customers
+  async getActiveCustomers() {
     try {
+      const count = await Master.countDocuments({
+        type: "CUSTOMER",
+        "customer.status": "Active"
+      });
 
-      // ✅ Today start
+      return { activeCustomers: count };
+    } catch (error) {
+      throw new Error(error.message);
+    }
+  },
+
+  // 🔹 Active Parts
+  async getActiveParts() {
+    try {
+      const count = await Master.countDocuments({
+        type: "PACK",
+        "pack.status": "Active"
+      });
+
+      return { activeParts: count };
+    } catch (error) {
+      throw new Error(error.message);
+    }
+  },
+
+  // 🔹 Today Moves (PackIn + PackOut)
+  async getTodayMoves() {
+    try {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
-      // ✅ Parallel execution (optimized)
-      const [
-        activeCustomers,
-        activeParts,
-        todayPackIn,
-        todayPackOut,
-        usedRacks
-      ] = await Promise.all([
-
-        // 🔹 Active Customers
-        Master.countDocuments({
-          type: "CUSTOMER",
-          "customer.status": "Active"
-        }),
-
-        // 🔹 Active Parts
-        Master.countDocuments({
-          type: "PACK",
-          "pack.status": "Active"
-        }),
-
-        // 🔹 Today Pack IN
+      const [packIn, packOut] = await Promise.all([
         PackIn.countDocuments({
           created_at: { $gte: todayStart },
           is_deleted: false
         }),
-
-        // 🔹 Today Pack OUT
         PackOut.countDocuments({
           created_at: { $gte: todayStart },
           is_deleted: false
-        }),
-
-        // 🔹 Used racks only
-        PackIn.distinct("rack.rack_id", {
-          is_deleted: false
         })
-
       ]);
 
-      // ✅ Today Moves
-      const todayMoves = todayPackIn + todayPackOut;
-
-      // ✅ FIXED: Rack Occupancy
-      const TOTAL_RACKS = 10; // 🔥 change based on your warehouse
-
-      const occupancy =
-        TOTAL_RACKS === 0
-          ? 0
-          : Math.round((usedRacks.length / TOTAL_RACKS) * 100);
-
-      return {
-        activeCustomers,
-        activeParts,
-        todayMoves,
-        occupancy
-      };
-
+      return { todayMoves: packIn + packOut };
     } catch (error) {
       throw new Error(error.message);
     }
-
   }
 
 };

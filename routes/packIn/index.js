@@ -14,4 +14,7 @@ router.get("/barcode/list", (req, res) =>packInController.listBarcodePackIn(req,
 router.get("/barcode/:id", (req, res) =>packInController.getBarcodePackInById(req, res));
 router.put("/barcode/update:id", (req, res) =>packInController.updateBarcodePackIn(req, res));
 router.delete("/barcode/delete/:id", (req, res) =>packInController.deleteBarcodePackIn(req, res));
+//excel routes
+router.get("/download-excel", (req, res) => packInController.downloadPackInExcel(req, res));
+
 export default router;

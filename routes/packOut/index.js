@@ -3,7 +3,7 @@ import { packOutController } from "../../controllers/packOut/index.js";
 
 const router=express.Router();
 
-router.post("/create",(req,res)=>packOutController.createPackOut(req,res));
+router.post("/",(req,res)=>packOutController.createPackOut(req,res));
 
 router.put("/update/:id",(req,res)=>packOutController.updatePackOut(req,res));
 
@@ -16,5 +16,7 @@ router.delete("/delete",(req,res)=>packOutController.deletePackOut(req,res));
 router.get("/invoice-dropdown",(req,res) =>packOutController.invoiceDropdown(req,res));
 
 router.get("/pack-details",(req,res)=>packOutController.getPackDetails(req,res));
+
+router.get("/download-excel", (req, res) => packOutController.downloadPackOutExcel(req, res));
 
 export default router;
