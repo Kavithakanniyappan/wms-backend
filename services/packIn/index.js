@@ -10,7 +10,7 @@ const packInService = {
     try {
       const data = req.body;
 
-      const requiredFields = ["customer_id", "customer_name", "invoice_number", "pack_id", "package_id", "quantity", "rack_id"];
+      const requiredFields = ["customer_id", "customer_name", "invoice_number", "package_id", "quantity", "rack_id"];
       for (const field of requiredFields) {
         if (!data[field]) {
           return res.status(400).json({ message: `Missing field: ${field}` });
@@ -20,7 +20,6 @@ const packInService = {
       const existing = await PackIn.findOne({
         "invoice.customer_id": data.customer_id,
         "invoice.invoice_number": data.invoice_number,
-        "part.pack_id": data.pack_id,
         "package.package_id": data.package_id,
         type: "CUSTOMER",
         is_deleted: false
@@ -38,11 +37,11 @@ const packInService = {
           customer_name: data.customer_name,
           invoice_number: data.invoice_number
         },
-        part: {
-          pack_id: data.pack_id,
-          pack_name: data.pack_name,
-          part_number: data.part_number
-        },
+        // part: {
+        //   pack_id: data.pack_id,
+        //   pack_name: data.pack_name,
+        //   part_number: data.part_number
+        // },
         package: {
           package_id: data.package_id,
           quantity_barcode: data.quantity_barcode,
@@ -162,7 +161,7 @@ const packInService = {
     try {
       const data = req.body;
 
-      const requiredFields = ["invoice_barcode", "pack_id", "package_id", "quantity", "rack_id"];
+      const requiredFields = ["invoice_barcode", "package_id", "quantity", "rack_id"];
       for (const field of requiredFields) {
         if (!data[field]) {
           return res.status(400).json({ message: `Missing field: ${field}` });
@@ -171,7 +170,6 @@ const packInService = {
 
       const existing = await PackIn.findOne({
         "invoice.invoice_barcode": data.invoice_barcode,
-        "part.pack_id": data.pack_id,
         "package.package_id": data.package_id,
         type: "BARCODE",
         is_deleted: false
@@ -187,11 +185,11 @@ const packInService = {
         invoice: {
           invoice_barcode: data.invoice_barcode
         },
-        part: {
-          pack_id: data.pack_id,
-          pack_name: data.pack_name,
-          part_number: data.part_number
-        },
+        // part: {
+        //  pack_id: data.pack_id,
+        //  pack_name: data.pack_name,
+        //  part_number: data.part_number
+        // },
         package: {
           package_id: data.package_id,
           quantity_barcode: data.quantity_barcode,

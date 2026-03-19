@@ -12,7 +12,7 @@ const packOutSchema = new mongoose.Schema({
 
   rack_id: { type: String },
 
-  part_number:{type: String},
+//  part_number:{type: String},
   is_deleted: {
     type: Boolean,
     default: false

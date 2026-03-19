@@ -17,6 +17,18 @@ async createCustomerMaster(req, res) {
         });
       }
     }
+    // DUPLICATE CHECK 
+const existingCustomer = await Master.findOne({
+  type: "CUSTOMER",
+  "customer.customer_code": data.customer_code
+});
+
+if (existingCustomer) {
+  return res.status(400).json({
+    status: "error",
+    message: "Customer already exists with this code"
+  });
+}
 
     const customer = new Master({
       type: "CUSTOMER",
@@ -114,7 +126,7 @@ async createPackMaster(req, res) {
   try {
     const data = req.body;
 
-    const requiredFields = ["pack_name", "customer_id", "uom"];
+    const requiredFields = ["part_name", "customer_id", "uom"];
 
     for (const field of requiredFields) {
       if (!data[field]) {
@@ -124,6 +136,18 @@ async createPackMaster(req, res) {
         });
       }
     }
+    // 🔥 DUPLICATE CHECK (PACK)
+const existingPack = await Master.findOne({
+  type: "PACK",
+  "pack.part_number": data.part_number
+});
+
+if (existingPack) {
+  return res.status(400).json({
+    status: "error",
+    message: "Part already exists with this part number"
+  });
+}
 
     const pack = new Master({
       type: "PACK",

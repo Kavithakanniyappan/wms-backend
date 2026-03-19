@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import packInRoutes from "./routes/packIn/index.js";
 import packOutRoutes from "./routes/packOut/index.js";
 import masterRoutes from "./routes/master/index.js";
+import dashboardRoutes from "./routes/dashboard/index.js"
 
 dotenv.config();
 
@@ -23,7 +24,7 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use("/api/packIn", packInRoutes);
 app.use("/api/packOut", packOutRoutes);
 app.use("/api/master", masterRoutes);
-
+app.use("/api/dashboard", dashboardRoutes);
 
 app.get("/",(req,res)=>{
     res.send("WMS API Running");
