@@ -3,184 +3,296 @@ import { v4 as uuidv4 } from "uuid";
 
 const packInService = {
 
-async createPackIn(req,res){
+  /* ================= CUSTOMER ================= */
 
-try{
+  // CREATE
+  async createPackIn(req, res) {
+    try {
+      const data = req.body;
 
-const data=req.body;
+      const requiredFields = ["customer_id", "customer_name", "invoice_number", "package_id", "quantity", "rack_id"];
+      for (const field of requiredFields) {
+        if (!data[field]) {
+          return res.status(400).json({ message: `Missing field: ${field}` });
+        }
+      }
 
-const requiredFields=[
-"customer_name",
-"invoice_number",
-"package_id",
-"quantity",
-"rack_id"
-];
+      const existing = await PackIn.findOne({
+        "invoice.customer_id": data.customer_id,
+        "invoice.invoice_number": data.invoice_number,
+        "package.package_id": data.package_id,
+        type: "CUSTOMER",
+        is_deleted: false
+      });
 
-for(const field of requiredFields){
+      if (existing) {
+        return res.status(400).json({ message: "Duplicate Customer Pack-In not allowed" });
+      }
 
-if(!data[field]){
+      const pack = new PackIn({
+        pack_in_id: `PACKIN_${uuidv4()}`,
+        type: "CUSTOMER",
+        invoice: {
+          customer_id: data.customer_id,
+          customer_name: data.customer_name,
+          invoice_number: data.invoice_number
+        },
+        // part: {
+        //   pack_id: data.pack_id,
+        //   pack_name: data.pack_name,
+        //   part_number: data.part_number
+        // },
+        package: {
+          package_id: data.package_id,
+          quantity_barcode: data.quantity_barcode,
+          quantity: data.quantity
+        },
+        rack: {
+          rack_id: data.rack_id,
+          //rack_status: data.rack_status
+        },
+        completion: {
+          notes: data.notes
+        }
+      });
 
-return res.status(400).json({
-status:"error",
-code:400,
-message:`Missing required field: ${field}`,
-data:null
-})
+      await pack.save();
 
-}
+      return res.status(201).json({ message: "Customer Pack-In created", data: pack });
 
-}
+    } catch (err) {
+      return res.status(500).json({ message: err.message });
+    }
+  },
 
-const packInData={
+  // LIST
+  async listPackIn(req, res) {
+    try {
+      const data = await PackIn.find({
+        type: "CUSTOMER",
+        is_deleted: false
+      }).sort({ created_at: -1 });
 
-pack_in_id:`packin_${uuidv4()}`,
-customer_name:data.customer_name,
-invoice_number:data.invoice_number,
-package_id:data.package_id,
-quantity:data.quantity,
-rack_id:data.rack_id
+      return res.status(200).json({ data });
 
-};
+    } catch (err) {
+      return res.status(500).json({ message: err.message });
+    }
+  },
 
-const pack=new PackIn(packInData);
+  // GET BY ID (?id=)
+  async getPackInById(req, res) {
+    try {
+      const { id } = req.query;
 
-await pack.save();
+      if (!id) {
+        return res.status(400).json({ message: "ID is required" });
+      }
 
-return res.status(201).json({
-status:"success",
-code:201,
-message:"Pack IN created successfully",
-data:null
-});
+      const data = await PackIn.findOne({
+        _id: id,
+        type: "CUSTOMER",
+        is_deleted: false
+      });
 
-}
-catch(err){
+      if (!data) {
+        return res.status(404).json({ message: "Not found" });
+      }
 
-return res.status(500).json({
-status:"error",
-code:500,
-message:err.message,
-data:null
-})
+      return res.status(200).json({ data });
 
-}
+    } catch (err) {
+      return res.status(500).json({ message: err.message });
+    }
+  },
 
-},
+  // UPDATE
+  async updatePackIn(req, res) {
+    try {
+      const { id } = req.params;
 
-async listPackIn(req,res){
+      const data = await PackIn.findOneAndUpdate(
+        { _id: id, type: "CUSTOMER", is_deleted: false },
+        { $set: req.body, updated_at: new Date() },
+        { new: true }
+      );
 
-try{
+      if (!data) {
+        return res.status(404).json({ message: "Not found or deleted" });
+      }
 
-const packs=await PackIn.find({is_deleted:false});
+      return res.status(200).json({ message: "Updated successfully", data });
 
-return res.status(200).json({
-status:"success",
-code:200,
-message:"Pack IN list fetched",
-data:packs
-})
+    } catch (err) {
+      return res.status(500).json({ message: err.message });
+    }
+  },
 
-}
-catch(err){
+  // DELETE (?id=)
+  async deletePackIn(req, res) {
+    try {
+      const { id } = req.query;
 
-return res.status(500).json({
-status:"error",
-code:500,
-message:err.message
-})
+      if (!id) {
+        return res.status(400).json({ message: "ID is required" });
+      }
 
-}
+      const data = await PackIn.findOneAndUpdate(
+        { _id: id, type: "CUSTOMER", is_deleted: false },
+        { $set: { is_deleted: true, updated_at: new Date() } },
+        { new: true }
+      );
 
-},
+      if (!data) {
+        return res.status(404).json({ message: "Not found or already deleted" });
+      }
 
-async getPackInById(req,res){
+      return res.status(200).json({ message: "Deleted successfully" });
 
-try{
+    } catch (err) {
+      return res.status(500).json({ message: err.message });
+    }
+  },
 
-const {id}=req.query;
+  /* ================= BARCODE ================= */
 
-const pack=await PackIn.findOne({_id:id,is_deleted:false});
+  // CREATE
+  async createBarcodePackIn(req, res) {
+    try {
+      const data = req.body;
 
-if(!pack){
+      const requiredFields = ["invoice_barcode", "package_id", "quantity", "rack_id"];
+      for (const field of requiredFields) {
+        if (!data[field]) {
+          return res.status(400).json({ message: `Missing field: ${field}` });
+        }
+      }
 
-return res.status(404).json({
-status:"error",
-message:"Pack IN not found"
-})
+      const existing = await PackIn.findOne({
+        "invoice.invoice_barcode": data.invoice_barcode,
+        "package.package_id": data.package_id,
+        type: "BARCODE",
+        is_deleted: false
+      });
 
-}
+      if (existing) {
+        return res.status(400).json({ message: "Duplicate Barcode Pack-In not allowed" });
+      }
 
-return res.status(200).json({
-status:"success",
-data:pack
-})
+      const pack = new PackIn({
+        pack_in_id: `PACKIN_${uuidv4()}`,
+        type: "BARCODE",
+        invoice: {
+          invoice_barcode: data.invoice_barcode
+        },
+        // part: {
+        //  pack_id: data.pack_id,
+        //  pack_name: data.pack_name,
+        //  part_number: data.part_number
+        // },
+        package: {
+          package_id: data.package_id,
+          quantity_barcode: data.quantity_barcode,
+          quantity: data.quantity
+        },
+        rack: {
+          rack_id: data.rack_id,
+          //rack_status: data.rack_status
+        },
+        completion: {
+          notes: data.notes
+        }
+      });
 
-}
-catch(err){
+      await pack.save();
 
-return res.status(500).json({
-status:"error",
-message:err.message
-})
+      return res.status(201).json({ message: "Barcode Pack-In created", data: pack });
 
-}
+    } catch (err) {
+      return res.status(500).json({ message: err.message });
+    }
+  },
 
-},
+  // LIST
+  async listBarcodePackIn(req, res) {
+    try {
+      const data = await PackIn.find({
+        type: "BARCODE",
+        is_deleted: false
+      }).sort({ created_at: -1 });
 
-async updatePackIn(req,res){
+      return res.status(200).json({ data });
 
-try{
+    } catch (err) {
+      return res.status(500).json({ message: err.message });
+    }
+  },
 
-const {id}=req.params;
+  // GET BY ID
+  async getBarcodePackInById(req, res) {
+    try {
+      const { id } = req.params;
 
-await PackIn.findByIdAndUpdate(id,{
-$set:req.body
-});
+      const data = await PackIn.findOne({
+        _id: id,
+        type: "BARCODE",
+        is_deleted: false
+      });
 
-return res.status(200).json({
-status:"success",
-message:"Pack IN updated"
-})
+      if (!data) {
+        return res.status(404).json({ message: "Not found" });
+      }
 
-}
-catch(err){
+      return res.status(200).json({ data });
 
-return res.status(500).json({
-status:"error",
-message:err.message
-})
+    } catch (err) {
+      return res.status(500).json({ message: err.message });
+    }
+  },
 
-}
+  // UPDATE
+  async updateBarcodePackIn(req, res) {
+    try {
+      const { id } = req.params;
 
-},
+      const data = await PackIn.findOneAndUpdate(
+        { _id: id, type: "BARCODE", is_deleted: false },
+        { $set: req.body, updated_at: new Date() },
+        { new: true }
+      );
 
-async deletePackIn(req,res){
+      if (!data) {
+        return res.status(404).json({ message: "Not found or deleted" });
+      }
 
-try{
+      return res.status(200).json({ message: "Updated successfully", data });
 
-const {id}=req.query;
+    } catch (err) {
+      return res.status(500).json({ message: err.message });
+    }
+  },
 
-await PackIn.findByIdAndUpdate(id,{
-is_deleted:true
-});
+  // DELETE
+  async deleteBarcodePackIn(req, res) {
+    try {
+      const { id } = req.params;
 
-return res.status(200).json({
-status:"success",
-message:"Pack IN deleted"
-})
+      const data = await PackIn.findOneAndUpdate(
+        { _id: id, type: "BARCODE", is_deleted: false },
+        { $set: { is_deleted: true, updated_at: new Date() } },
+        { new: true }
+      );
 
-}
-catch(err){
+      if (!data) {
+        return res.status(404).json({ message: "Not found or already deleted" });
+      }
 
-return res.status(500).json({
-status:"error",
-message:err.message
-})
+      return res.status(200).json({ message: "Deleted successfully" });
 
-}
-
-}
+    } catch (err) {
+      return res.status(500).json({ message: err.message });
+    }
+  }
 
 };
 
