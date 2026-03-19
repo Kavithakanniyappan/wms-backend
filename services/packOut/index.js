@@ -31,6 +31,64 @@ data:null
 }
 
 }
+//  stock validation
+
+const totalIn = await PackIn.aggregate([
+  {
+    $match: {
+      "package.package_id": data.package_id,
+      is_deleted: false
+    }
+  },
+  {
+    $group: {
+      _id: null,
+      total: { $sum: "$package.quantity" }
+    }
+  }
+]);
+
+const totalOut = await PackOut.aggregate([
+  {
+    $match: {
+      package_id: data.package_id,
+      is_deleted: false
+    }
+  },
+  {
+    $group: {
+      _id: null,
+      total: { $sum: "$quantity" }
+    }
+  }
+]);
+
+const available =
+  (totalIn[0]?.total || 0) - (totalOut[0]?.total || 0);
+
+// ❌ If not enough stock
+if (data.quantity > available) {
+  return res.status(400).json({
+    status: "error",
+    message: "Insufficient stock",
+    available_stock: available
+  });
+}
+//  DUPLICATE CHECK (PackOut)
+const existingPackOut = await PackOut.findOne({
+  invoice_number: data.invoice_number,
+  package_id: data.package_id,
+  rack_id: data.rack_id,
+  is_deleted: false
+});
+
+if (existingPackOut) {
+  return res.status(400).json({
+    status: "error",
+    message: "Duplicate entry: PackOut already exists for this invoice, package and rack"
+  });
+} 
+
 
 const packOutData={
 
@@ -39,7 +97,7 @@ invoice_number:data.invoice_number,
 package_id:data.package_id,
 quantity:data.quantity,
 rack_id:data.rack_id,
-part_number:data.part_number
+//part_number:data.part_number
 
 };
 

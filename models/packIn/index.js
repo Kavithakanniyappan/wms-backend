@@ -12,12 +12,12 @@ const packInSchema = new mongoose.Schema({
     invoice_barcode: { type: String }
   },
 
-  // ✅ Plain object (NO sub-schema → NO _id)
-  part: {
-    pack_id: { type: String, unique: true },
-    pack_name: { type: String},
-    part_number: { type: String }
-  },
+  // // part
+  // part: {
+  //   pack_id: { type: String, unique: true },
+  //    pack_name: { type: String},
+  //    part_number: { type: String }
+  // },
 
   package: {
     package_id: { type: String },
