@@ -1,129 +1,146 @@
 import PackOut from "../../models/packOut/index.js";
 import PackIn from "../../models/packIn/index.js";
+import ExcelJS from "exceljs";
 import { v4 as uuidv4 } from "uuid";
 
 const packOutService = {
 
-async createPackOut(req,res){
+async createPackOut(req, res) {
+  try {
+    const data = req.body;
 
-try{
+    const requiredFields = ["invoice_number", "package_id", "quantity", "rack_id"];
 
-const data=req.body;
+    for (const field of requiredFields) {
+      if (!data[field]) {
+        return res.status(400).json({
+          status: "error",
+          message: `Missing required field: ${field}`
+        });
+      }
+    }
 
-const requiredFields=[
-"invoice_number",
-"package_id",
-"quantity",
-"rack_id"
-];
-
-for(const field of requiredFields){
-
-if(!data[field]){
-
-return res.status(400).json({
-status:"error",
-code:400,
-message:`Missing required field: ${field}`,
-data:null
-})
-
-}
-
-}
-//  stock validation
-
-const totalIn = await PackIn.aggregate([
-  {
-    $match: {
+    //  1. CHECK invoice exists in PackIn
+    const packInData = await PackIn.findOne({
+      "invoice.invoice_number": data.invoice_number,
       "package.package_id": data.package_id,
       is_deleted: false
-    }
-  },
-  {
-    $group: {
-      _id: null,
-      total: { $sum: "$package.quantity" }
-    }
-  }
-]);
+    });
 
-const totalOut = await PackOut.aggregate([
-  {
-    $match: {
+    if (!packInData) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid invoice number. No PackIn found"
+      });
+    }
+
+    // 2. TOTAL PACK IN QUANTITY
+    const totalPackIn = await PackIn.aggregate([
+      {
+        $match: {
+          "invoice.invoice_number": data.invoice_number,
+          "package.package_id": data.package_id,
+          is_deleted: false
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$package.quantity" }
+        }
+      }
+    ]);
+
+    const totalIn = totalPackIn[0]?.total || 0;
+
+    // 3. TOTAL PACK OUT QUANTITY
+    const totalPackOut = await PackOut.aggregate([
+      {
+        $match: {
+          invoice_number: data.invoice_number,
+          package_id: data.package_id,
+          is_deleted: false
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$quantity" }
+        }
+      }
+    ]);
+
+    const totalOut = totalPackOut[0]?.total || 0;
+
+    const availableQty = totalIn - totalOut;
+
+    // 🔹  VALIDATE QUANTITY
+    if (data.quantity > availableQty) {
+      return res.status(400).json({
+        status: "error",
+        message: `Only ${availableQty} quantity available`
+      });
+    }
+
+    // 🔹 RACK CAPACITY (Example: max 10 per rack)
+    const MAX_RACK_CAPACITY = 10;
+
+    const rackUsed = await PackIn.aggregate([
+      {
+        $match: {
+          "rack.rack_id": data.rack_id,
+          is_deleted: false
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$package.quantity" }
+        }
+      }
+    ]);
+
+    const usedSpace = rackUsed[0]?.total || 0;
+    const availableSpace = MAX_RACK_CAPACITY - usedSpace;
+
+    if (availableSpace <= 0) {
+      return res.status(400).json({
+        status: "error",
+        message: "Rack is FULL"
+      });
+    }
+
+    if (data.quantity > availableSpace) {
+      return res.status(400).json({
+        status: "error",
+        message: `Only ${availableSpace} space available in rack`
+      });
+    }
+
+    //  CREATE PACK OUT
+    const pack = new PackOut({
+      pack_out_id: `PACKOUT_${uuidv4()}`,
+      invoice_number: data.invoice_number,
       package_id: data.package_id,
-      is_deleted: false
-    }
-  },
-  {
-    $group: {
-      _id: null,
-      total: { $sum: "$quantity" }
-    }
+      quantity: data.quantity,
+      rack_id: data.rack_id
+      // customer optional → no validation
+    });
+
+    await pack.save();
+
+    return res.status(201).json({
+      status: "success",
+      message: "Pack OUT created",
+      rack_status: `${availableSpace - data.quantity} space left`
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      status: "error",
+      message: err.message
+    });
   }
-]);
-
-const available =
-  (totalIn[0]?.total || 0) - (totalOut[0]?.total || 0);
-
-// ❌ If not enough stock
-if (data.quantity > available) {
-  return res.status(400).json({
-    status: "error",
-    message: "Insufficient stock",
-    available_stock: available
-  });
-}
-//  DUPLICATE CHECK (PackOut)
-const existingPackOut = await PackOut.findOne({
-  invoice_number: data.invoice_number,
-  package_id: data.package_id,
-  rack_id: data.rack_id,
-  is_deleted: false
-});
-
-if (existingPackOut) {
-  return res.status(400).json({
-    status: "error",
-    message: "Duplicate entry: PackOut already exists for this invoice, package and rack"
-  });
-} 
-
-
-const packOutData={
-
-pack_out_id:`packout_${uuidv4()}`,
-invoice_number:data.invoice_number,
-package_id:data.package_id,
-quantity:data.quantity,
-rack_id:data.rack_id,
-//part_number:data.part_number
-
-};
-
-const pack=new PackOut(packOutData);
-
-await pack.save();
-
-return res.status(201).json({
-status:"success",
-code:201,
-message:"Pack OUT created successfully",
-data:null
-});
-
-}
-catch(err){
-
-return res.status(500).json({
-status:"error",
-code:500,
-message:err.message,
-data:null
-})
-
-}
-
 },
 
 async listPackOut(req,res){
@@ -273,10 +290,10 @@ async getPackDetails(req, res) {
       data: {
         invoice_number: pack.invoice?.invoice_number,
         customer_name: pack.invoice?.customer_name,
-        part_number: pack.part?.part_number,
+       //part_number: pack.part?.part_number,
         package_id: pack.package?.package_id,
         quantity: pack.package?.quantity,
-        //rack_id: pack.rack?.rack_id
+        rack_id: pack.rack?.rack_id
       }
     });
 
@@ -299,7 +316,7 @@ async invoiceDropdown(req, res) {
       { 
         "invoice.invoice_number": 1,
         "invoice.customer_name": 1,
-        "part.part_number": 1,
+        //"part.part_number": 1,
         _id: 0
       }
     );
@@ -322,7 +339,35 @@ async invoiceDropdown(req, res) {
       message: err.message
     });
   }
+},
+async downloadPackOutExcel(req, res) {
+  const data = await PackOut.find({ is_deleted: false });
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("PackOut");
+
+  sheet.columns = [
+    { header: "Invoice", key: "invoice" },
+    { header: "Package", key: "package" },
+    { header: "Quantity", key: "quantity" },
+    { header: "Rack", key: "rack" }
+  ];
+
+  data.forEach(item => {
+    sheet.addRow({
+      invoice: item.invoice_number,
+      package: item.package_id,
+      quantity: item.quantity,
+      rack: item.rack_id
+    });
+  });
+
+  res.setHeader("Content-Disposition", "attachment; filename=packout.xlsx");
+
+  await workbook.xlsx.write(res);
+  res.end();
 }
+
 };
 
 export default packOutService;
