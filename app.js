@@ -6,7 +6,7 @@ import packInRoutes from "./routes/packIn/index.js";
 import packOutRoutes from "./routes/packOut/index.js";
 import masterRoutes from "./routes/master/index.js";
 import dashboardRoutes from "./routes/dashboard/index.js"
-import authRoutes from "./routes/auth.js";
+import authRoutes from "./routes/auth/index.js";
 dotenv.config();
 
 const app = express();
