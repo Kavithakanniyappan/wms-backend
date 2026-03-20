@@ -4,72 +4,126 @@ import { v4 as uuidv4 } from "uuid";
 
 const packOutService = {
 
-  async createPackOut(req, res) {
-    try {
-      const data = req.body;
+ async createPackOut(req, res) {
+  try {
+    const data = req.body;
 
-      const requiredFields = [
-        "invoice_number",
-        "package_id",
-        "quantity",
-        "rack_id"
-      ];
+    const requiredFields = [
+      "invoice_number",
+      "package_id",
+      "quantity",
+      "rack_id"
+    ];
 
-      for (const field of requiredFields) {
-        if (!data[field]) {
-          return res.status(400).json({
-            status: "error",
-            code: 400,
-            message: `Missing required field: ${field}`,
-            data: null
-          });
-        }
-      }
-
-      // ✅ DUPLICATE CHECK (Combination: invoice + package + rack)
-      const existingPackOut = await PackOut.findOne({
-        invoice_number: data.invoice_number,
-        package_id: data.package_id,
-        rack_id: data.rack_id,
-        is_deleted: false
-      });
-
-      if (existingPackOut) {
+    for (const field of requiredFields) {
+      if (!data[field]) {
         return res.status(400).json({
           status: "error",
-          message: "Duplicate entry: PackOut already exists for this invoice, package and rack"
+          message: `Missing required field: ${field}`
         });
       }
+    }
 
-      // ✅ CREATE PACKOUT
-      const packOutData = {
-        pack_out_id: `packout_${uuidv4()}`,
-        customer_name:data.customer_name,
-        invoice_number: data.invoice_number,
-        package_id: data.package_id,
-        quantity: data.quantity,
-        rack_id: data.rack_id
-      };
+    // ✅ STEP 1: CHECK PACKIN EXISTS
+    const packInData = await PackIn.findOne({
+      "invoice.invoice_number": data.invoice_number,
+      is_deleted: false
+    });
 
-      const pack = new PackOut(packOutData);
-      await pack.save();
-
-      return res.status(201).json({
-        status: "success",
-        code: 201,
-        message: "Pack OUT created successfully",
-        data: null
-      });
-
-    } catch (err) {
-      return res.status(500).json({
+    if (!packInData) {
+      return res.status(400).json({
         status: "error",
-        code: 500,
-        message: err.message,
-        data: null
+        message: "Invalid invoice_number: No PackIn record found"
       });
     }
-  },
+
+    // ✅ STEP 2: VALIDATE PACKAGE MATCH
+    if (packInData.package?.package_id !== data.package_id) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid package_id for this invoice"
+      });
+    }
+
+    // ✅ STEP 3: VALIDATE RACK (if stored in PackIn)
+    if (packInData.rack_id && packInData.rack_id !== data.rack_id) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid rack_id for this invoice"
+      });
+    }
+
+    // ✅ STEP 4: CHECK DUPLICATE (invoice + package + rack)
+    const existingPackOut = await PackOut.findOne({
+      invoice_number: data.invoice_number,
+      package_id: data.package_id,
+      rack_id: data.rack_id,
+      is_deleted: false
+    });
+
+    if (existingPackOut) {
+      return res.status(400).json({
+        status: "error",
+        message: "Duplicate entry: PackOut already exists for this combination"
+      });
+    }
+
+    // ✅ STEP 5: CHECK AVAILABLE QUANTITY
+    const totalPackedInQty = packInData.package?.quantity || 0;
+
+    const totalPackedOutQty = await PackOut.aggregate([
+      {
+        $match: {
+          invoice_number: data.invoice_number,
+          package_id: data.package_id,
+          rack_id: data.rack_id,
+          is_deleted: false
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$quantity" }
+        }
+      }
+    ]);
+
+    const usedQty = totalPackedOutQty.length > 0 ? totalPackedOutQty[0].total : 0;
+
+    const remainingQty = totalPackedInQty - usedQty;
+
+    if (data.quantity > remainingQty) {
+      return res.status(400).json({
+        status: "error",
+        message: `Quantity exceeded. Available: ${remainingQty}`
+      });
+    }
+
+    // ✅ STEP 6: CREATE PACKOUT
+    const packOutData = {
+      pack_out_id: `packout_${uuidv4()}`,
+      customer_name: packInData.invoice?.customer_name,
+      invoice_number: data.invoice_number,
+      package_id: data.package_id,
+      quantity: data.quantity,
+      rack_id: data.rack_id
+    };
+
+    const pack = new PackOut(packOutData);
+    await pack.save();
+
+    return res.status(201).json({
+      status: "success",
+      message: "Pack OUT created successfully"
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      status: "error",
+      message: err.message
+    });
+  }
+},
 
   async listPackOut(req, res) {
     try {
