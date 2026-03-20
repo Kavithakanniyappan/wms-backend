@@ -302,6 +302,7 @@ async downloadPackInExcel(req, res) {
   const sheet = workbook.addWorksheet("PackIn");
 
   sheet.columns = [
+    
     { header: "Invoice", key: "invoice" },
     { header: "Package", key: "package" },
     { header: "Quantity", key: "quantity" },
@@ -310,6 +311,7 @@ async downloadPackInExcel(req, res) {
 
   data.forEach(item => {
     sheet.addRow({
+
       invoice: item.invoice?.invoice_number,
       package: item.package?.package_id,
       quantity: item.package?.quantity,
