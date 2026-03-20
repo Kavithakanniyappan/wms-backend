@@ -1,4 +1,6 @@
 import User from "../../models/user/index.js";
+import { v4 as uuidv4 } from "uuid";
+
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -27,6 +29,7 @@ const authService = {
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     const newUser = new User({
+      user_id: `USER_${uuidv4()}`,
       name: data.name,
       email: data.email,
       password: hashedPassword
@@ -62,7 +65,7 @@ const authService = {
     }
 
     const token = jwt.sign(
-      { user_id: user._id, email: user.email },
+      { user_id: user.user_id, email: user.email },
       "SECRET_KEY",
       { expiresIn: "1d" }
     );
@@ -71,6 +74,7 @@ const authService = {
       success: "Login successful",
       token,
       user: {
+        user_id: user.user_id,
         name: user.name,
         email: user.email
       }
