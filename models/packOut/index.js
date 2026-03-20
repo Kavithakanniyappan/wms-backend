@@ -4,6 +4,8 @@ const packOutSchema = new mongoose.Schema({
 
   pack_out_id: { type: String, unique: true },
 
+  customer_name:{type:String},
+
   invoice_number: { type: String },
 
   package_id: { type: String },

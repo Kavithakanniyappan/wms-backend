@@ -7,6 +7,7 @@ import packOutRoutes from "./routes/packOut/index.js";
 import masterRoutes from "./routes/master/index.js";
 import dashboardRoutes from "./routes/dashboard/index.js"
 import authRoutes from "./routes/auth/index.js";
+
 dotenv.config();
 
 const app = express();
@@ -26,6 +27,7 @@ app.use("/api/packOut", packOutRoutes);
 app.use("/api/master", masterRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/reports", reportsRoutes);
 app.get("/",(req,res)=>{
     res.send("WMS API Running");
 });

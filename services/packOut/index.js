@@ -44,6 +44,7 @@ const packOutService = {
       // ✅ CREATE PACKOUT
       const packOutData = {
         pack_out_id: `packout_${uuidv4()}`,
+        customer_name:data.customer_name,
         invoice_number: data.invoice_number,
         package_id: data.package_id,
         quantity: data.quantity,
@@ -214,7 +215,7 @@ const packOutService = {
         {
           "invoice.invoice_number": 1,
           "invoice.customer_name": 1,
-          "part.part_number": 1,
+          //"part.part_number": 1,
           _id: 0
         }
       );
@@ -222,7 +223,7 @@ const packOutService = {
       const formattedData = invoices.map(item => ({
         invoice_number: item.invoice?.invoice_number,
         customer_name: item.invoice?.customer_name,
-        part_number: item.part?.part_number
+        //part_number: item.part?.part_number
       }));
 
       return res.status(200).json({

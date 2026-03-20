@@ -45,7 +45,7 @@ const packInService = {
         // },
         package: {
           package_id: data.package_id,
-          quantity_barcode: data.quantity_barcode,
+          //quantity_barcode: data.quantity_barcode,
           quantity: data.quantity
         },
         rack: {
@@ -193,7 +193,7 @@ const packInService = {
         // },
         package: {
           package_id: data.package_id,
-          quantity_barcode: data.quantity_barcode,
+          //quantity_barcode: data.quantity_barcode,
           quantity: data.quantity
         },
         rack: {
