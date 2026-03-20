@@ -3,7 +3,7 @@ import { packInController } from "../../controllers/packIn/index.js";
 
 const router=express.Router();
 //customer routes
-router.post("/create",(req,res)=>packInController.createPackIn(req,res));
+router.post("/",(req,res)=>packInController.createPackIn(req,res));
 router.put("/update/:id",(req,res)=>packInController.updatePackIn(req,res));
 router.get("/list",(req,res)=>packInController.listPackIn(req,res));
 router.get("/getById",(req,res)=>packInController.getPackInById(req,res));
