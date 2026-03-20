@@ -21,7 +21,7 @@ const packInSchema = new mongoose.Schema({
 
   package: {
     package_id: { type: String },
-    quantity_barcode: { type: String },
+    //quantity_barcode: { type: String },
     quantity: { type: Number}
   },
 

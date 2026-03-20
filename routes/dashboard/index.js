@@ -7,5 +7,6 @@ const router = express.Router();
 router.get("/active-customers", dashboardController.getActiveCustomers);
 router.get("/active-parts", dashboardController.getActiveParts);
 router.get("/today-moves", dashboardController.getTodayMoves);
+router.get("/dashboard/summary", dashboardController.getDashboardSummary);
 
 export default router;

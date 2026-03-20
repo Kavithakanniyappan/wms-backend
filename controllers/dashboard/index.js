@@ -51,7 +51,24 @@ const dashboardController = {
         message: error.message
       });
     }
+  },
+  async getDashboardSummary(req, res) {
+  try {
+    const data = await dashboardService.getDashboardSummary();
+
+    res.status(200).json({
+      status: "success",
+      message: "Dashboard summary fetched successfully",
+      data
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: error.message
+    });
   }
+}
 
 };
 

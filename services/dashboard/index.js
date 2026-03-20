@@ -53,7 +53,54 @@ const dashboardService = {
     } catch (error) {
       throw new Error(error.message);
     }
+  },
+  async getDashboardSummary() {
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [
+      activeCustomers,
+      activeParts,
+      packInToday,
+      packOutToday
+    ] = await Promise.all([
+
+      // Active Customers
+      Master.countDocuments({
+        type: "CUSTOMER",
+        "customer.status": "Active"
+      }),
+
+      // Active Parts
+      Master.countDocuments({
+        type: "PACK",
+        "pack.status": "Active"
+      }),
+
+      // PackIn Today
+      PackIn.countDocuments({
+        created_at: { $gte: todayStart },
+        is_deleted: false
+      }),
+
+      // PackOut Today
+      PackOut.countDocuments({
+        created_at: { $gte: todayStart },
+        is_deleted: false
+      })
+    ]);
+
+    return {
+      activeCustomers,
+      activeParts,
+      todayMoves: packInToday + packOutToday
+    };
+
+  } catch (error) {
+    throw new Error(error.message);
   }
+}
 
 };
 
