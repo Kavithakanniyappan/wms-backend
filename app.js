@@ -7,6 +7,7 @@ import packOutRoutes from "./routes/packOut/index.js";
 import masterRoutes from "./routes/master/index.js";
 import dashboardRoutes from "./routes/dashboard/index.js"
 import authRoutes from "./routes/auth/index.js";
+import reportsRoutes from "./routes/reports/index.js";
 
 dotenv.config();
 
