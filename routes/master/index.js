@@ -20,8 +20,14 @@ router.delete("/pack/:id", masterController.deletePackMaster);
 router.get("/dropdown/customer", masterController.customerDropdown);
 router.get("/dropdown/status", masterController.statusDropdown);
 
-/* ================= FILTER ================= */
+//FILTER 
 router.get("/filter", masterController.commonFilter);
+//racks
+router.post("/rack", masterController.createRack);
+router.get("/rack", masterController.listRack);
+router.get("/rack/:id", masterController.getRackById);
+router.put("/rack/:id", masterController.updateRack);
+router.delete("/rack/:id", masterController.deleteRack);
 
 
 export default router;

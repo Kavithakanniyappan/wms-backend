@@ -23,6 +23,15 @@ const packSchema = new mongoose.Schema({
   barcode:{type: String},
   status: { type: String, default: "Active" }
 });
+//Rack Shema
+const rackSchema = new mongoose.Schema({
+  rack_id: { type: String },
+  pack_id:{type:String},
+  quantity: { type: Number },
+  rack_status:{type:String},
+   is_deleted: { type: Boolean, default: false } 
+});
+
   // MASTER SCHEMA
 
 const masterSchema = new mongoose.Schema({
@@ -30,6 +39,7 @@ const masterSchema = new mongoose.Schema({
 
   customer: customerSchema,
   pack: packSchema,
+  racks: rackSchema,  
 
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
