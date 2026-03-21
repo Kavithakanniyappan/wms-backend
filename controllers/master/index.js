@@ -20,7 +20,12 @@ export const masterController = {
   statusDropdown: (req, res) => masterService.statusDropdown(req, res),
 
   //  Filter
-  commonFilter: (req, res) => masterService.commonFilter(req, res)
-  
+  commonFilter: (req, res) => masterService.commonFilter(req, res),
+  //Racks
+  createRack: (req, res) => masterService.createRack(req, res),
+  listRack: (req, res) => masterService.listRack(req, res),
+  getRackById: (req, res) => masterService.getRackById(req, res),
+  updateRack: (req, res) => masterService.updateRack(req, res),
+  deleteRack: (req, res) => masterService.deleteRack(req, res)
 
 };
