@@ -5,7 +5,10 @@ const reportsService = {
 
   async getReports(filters) {
     try {
-      const { type, customer, invoice, part, from, to } = filters;
+      let { type, customer, invoice, part, from, to } = filters;
+
+      // 🔥 Normalize type
+      const normalizedType = type ? type.toUpperCase() : null;
 
       // 🔹 Common Query
       let query = {
@@ -35,15 +38,30 @@ const reportsService = {
 
       let data = [];
 
-      // 🔹 Type Filter (MAIN LOGIC)
-      if (type === "PART_IN") {
+      // 🔥 MAIN LOGIC
+      if (normalizedType === "PART_IN") {
+
         data = await PackIn.find(query).sort({ created_at: -1 });
-      } 
-      else if (type === "PART_OUT") {
+
+      } else if (normalizedType === "PART_OUT") {
+
         data = await PackOut.find(query).sort({ created_at: -1 });
-      } 
-      else {
+
+      } else if (!normalizedType) {
+
+        // 🔥 GET BOTH
+        const packInData = await PackIn.find(query);
+        const packOutData = await PackOut.find(query);
+
+        // 🔥 Merge + Sort
+        data = [...packInData, ...packOutData].sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        );
+
+      } else {
+
         throw new Error("Invalid type. Use PART_IN or PART_OUT");
+
       }
 
       return data;
