@@ -271,7 +271,7 @@ async statusDropdown(req, res) {
 },
 async commonFilter(req, res) {
   try {
-    const { type, customer_name, pack_name } = req.query;
+    const { type, customer_name, part_name } = req.query;
 
     let query = {};
 
@@ -285,7 +285,7 @@ async commonFilter(req, res) {
     if (type === "PACK") {
       query.type = "PACK";
       if (pack_name) {
-        query["pack.pack_name"] = { $regex: pack_name, $options: "i" };
+        query["pack.part_name"] = { $regex: part_name, $options: "i" };
       }
     }
 
@@ -300,7 +300,8 @@ async commonFilter(req, res) {
     return res.status(500).json({ message: err.message });
   }
 },
-// CREATE
+
+// CREATE RACK
 async createRack(req, res) {
   try {
     const data = req.body;
@@ -328,6 +329,11 @@ async createRack(req, res) {
       });
     }
 
+    //  FIX: initialize racks array
+    if (!pack.racks) {
+      pack.racks = [];
+    }
+
     // DUPLICATE CHECK
     const existingRack = pack.racks.find(
       r => r.rack_id === data.rack_id && !r.is_deleted
@@ -344,7 +350,7 @@ async createRack(req, res) {
       rack_id: data.rack_id,
       pack_id: data.pack_id,
       quantity: data.quantity || 0,
-      rack_status:data.rack_status,
+      rack_status: data.rack_status || "Active",
       is_deleted: false
     });
 
@@ -359,11 +365,18 @@ async createRack(req, res) {
     return res.status(500).json({ message: err.message });
   }
 },
+   //LIST RACKS
 
-// LIST
 async listRack(req, res) {
   try {
     const { pack_id } = req.query;
+
+    if (!pack_id) {
+      return res.status(400).json({
+        status: "error",
+        message: "pack_id is required"
+      });
+    }
 
     const pack = await Master.findOne({
       type: "PACK",
@@ -377,7 +390,7 @@ async listRack(req, res) {
       });
     }
 
-    const data = pack.racks.filter(r => !r.is_deleted);
+    const data = (pack.racks || []).filter(r => !r.is_deleted);
 
     return res.status(200).json({
       status: "success",
@@ -388,11 +401,18 @@ async listRack(req, res) {
     return res.status(500).json({ message: err.message });
   }
 },
+// GET RACK BY ID
 
-// GET BY ID
 async getRackById(req, res) {
   try {
     const { pack_id, rack_id } = req.query;
+
+    if (!pack_id || !rack_id) {
+      return res.status(400).json({
+        status: "error",
+        message: "pack_id and rack_id required"
+      });
+    }
 
     const pack = await Master.findOne({
       type: "PACK",
@@ -406,43 +426,8 @@ async getRackById(req, res) {
       });
     }
 
-    const data = pack.racks.find(
+    const rack = (pack.racks || []).find(
       r => r.rack_id === rack_id && !r.is_deleted
-    );
-
-    if (!data) {
-      return res.status(400).json({
-        status: "error",
-        message: "Rack not found"
-      });
-    }
-
-    return res.status(200).json({ data });
-
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
-},
-
-// UPDATE
-async updateRack(req, res) {
-  try {
-    const data = req.body;
-
-    const pack = await Master.findOne({
-      type: "PACK",
-      "pack.pack_id": data.pack_id
-    });
-
-    if (!pack) {
-      return res.status(400).json({
-        status: "error",
-        message: "Pack not found"
-      });
-    }
-
-    const rack = pack.racks.find(
-      r => r.rack_id === data.rack_id && !r.is_deleted
     );
 
     if (!rack) {
@@ -452,7 +437,58 @@ async updateRack(req, res) {
       });
     }
 
-    rack.quantity = data.quantity;
+    return res.status(200).json({
+      status: "success",
+      data: rack
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+},
+
+
+   //UPDATE RACK
+
+async updateRack(req, res) {
+  try {
+    const data = req.body;
+
+    const { pack_id, rack_id } = data;
+
+    if (!pack_id || !rack_id) {
+      return res.status(400).json({
+        status: "error",
+        message: "pack_id and rack_id required"
+      });
+    }
+
+    const pack = await Master.findOne({
+      type: "PACK",
+      "pack.pack_id": pack_id
+    });
+
+    if (!pack) {
+      return res.status(400).json({
+        status: "error",
+        message: "Pack not found"
+      });
+    }
+
+    const rack = (pack.racks || []).find(
+      r => r.rack_id === rack_id && !r.is_deleted
+    );
+
+    if (!rack) {
+      return res.status(400).json({
+        status: "error",
+        message: "Rack not found"
+      });
+    }
+
+    // update fields
+    if (data.quantity !== undefined) rack.quantity = data.quantity;
+    if (data.rack_status) rack.rack_status = data.rack_status;
 
     await pack.save();
 
@@ -466,14 +502,22 @@ async updateRack(req, res) {
   }
 },
 
-// DELETE 
+ //DELETE RACK 
+
 async deleteRack(req, res) {
   try {
-    const data = req.body;
+    const { pack_id, rack_id } = req.body;
+
+    if (!pack_id || !rack_id) {
+      return res.status(400).json({
+        status: "error",
+        message: "pack_id and rack_id required"
+      });
+    }
 
     const pack = await Master.findOne({
       type: "PACK",
-      "pack.pack_id": data.pack_id
+      "pack.pack_id": pack_id
     });
 
     if (!pack) {
@@ -483,8 +527,8 @@ async deleteRack(req, res) {
       });
     }
 
-    const rack = pack.racks.find(
-      r => r.rack_id === data.rack_id && !r.is_deleted
+    const rack = (pack.racks || []).find(
+      r => r.rack_id === rack_id && !r.is_deleted
     );
 
     if (!rack) {
@@ -494,20 +538,20 @@ async deleteRack(req, res) {
       });
     }
 
+    //  SOFT DELETE
     rack.is_deleted = true;
 
     await pack.save();
 
     return res.status(200).json({
       status: "success",
-      message: "Deleted"
+      message: "Rack deleted"
     });
 
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
 }
-
 };
 
 export default masterService;
