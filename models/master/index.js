@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-//CUSTOMER SCHEMA
+// CUSTOMER 
 const customerSchema = new mongoose.Schema({
   customer_id: String,
   customer_name: String,
@@ -12,8 +12,7 @@ const customerSchema = new mongoose.Schema({
   status: { type: String, default: "Active" }
 });
 
-// PACK SCHEMA
-
+// PACK 
 const packSchema = new mongoose.Schema({
   pack_id: String,
   part_number: String,
@@ -25,9 +24,7 @@ const packSchema = new mongoose.Schema({
   status: { type: String, default: "Active" }
 });
 
-
-  // RACK SCHEMA
-
+// RACK 
 const rackSchema = new mongoose.Schema({
   rack_id: String,
   pack_id: String,
@@ -36,8 +33,7 @@ const rackSchema = new mongoose.Schema({
   is_deleted: { type: Boolean, default: false }
 });
 
-
-  // MASTER SCHEMA
+// MASTER 
 const masterSchema = new mongoose.Schema({
   type: { 
     type: String, 
@@ -48,7 +44,6 @@ const masterSchema = new mongoose.Schema({
   customer: customerSchema,
   pack: packSchema,
 
-  // ✅ IMPORTANT
   racks: {
     type: [rackSchema],
     default: []
