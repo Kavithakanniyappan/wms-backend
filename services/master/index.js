@@ -334,17 +334,28 @@ async createRack(req, res) {
       pack.racks = [];
     }
 
-    // DUPLICATE CHECK
-    const existingRack = pack.racks.find(
-      r => r.rack_id === data.rack_id && !r.is_deleted
-    );
+     // DUPLICATE CHECK
+    // const existingRack = pack.racks.find(
+    //   r => r.rack_id === data.rack_id && !r.is_deleted
+    // );
 
-    if (existingRack) {
-      return res.status(400).json({
-        status: "error",
-        message: "Rack already exists"
-      });
-    }
+    // if (existingRack) {
+    //   return res.status(400).json({
+    //     status: "error",
+    //     message: "Rack already exists"
+    //   });
+    // }
+    // ✅ ADD YOUR VALIDATION HERE
+if (data.quantity !== undefined) {
+
+  if (data.quantity < 0) {
+    return res.status(400).json({
+      status: "error",
+      message: `Expected space is not available for Rack ${data.rack_id}`
+    });
+  }
+
+}
 
     pack.racks.push({
       rack_id: data.rack_id,
@@ -369,28 +380,13 @@ async createRack(req, res) {
 
 async listRack(req, res) {
   try {
-    const { pack_id } = req.query;
+    // Get all PACK documents
+    const packs = await Master.find({ type: "PACK" });
 
-    if (!pack_id) {
-      return res.status(400).json({
-        status: "error",
-        message: "pack_id is required"
-      });
-    }
-
-    const pack = await Master.findOne({
-      type: "PACK",
-      "pack.pack_id": pack_id
-    });
-
-    if (!pack) {
-      return res.status(400).json({
-        status: "error",
-        message: "Pack not found"
-      });
-    }
-
-    const data = (pack.racks || []).filter(r => !r.is_deleted);
+    // Extract and flatten all racks
+    const data = packs.flatMap(pack =>
+      (pack.racks || []).filter(r => !r.is_deleted)
+    );
 
     return res.status(200).json({
       status: "success",
@@ -401,6 +397,7 @@ async listRack(req, res) {
     return res.status(500).json({ message: err.message });
   }
 },
+
 // GET RACK BY ID
 
 async getRackById(req, res) {
@@ -489,7 +486,19 @@ async updateRack(req, res) {
     // update fields
     if (data.quantity !== undefined) rack.quantity = data.quantity;
     if (data.rack_status) rack.rack_status = data.rack_status;
+    
+if (data.quantity !== undefined) {
 
+  // ✅ ADD VALIDATION HERE
+  if (data.quantity < 0) {
+    return res.status(400).json({
+      status: "error",
+      message: `Expected space is not available for Rack ${rack_id}`
+    });
+  }
+
+  rack.quantity = data.quantity;
+}
     await pack.save();
 
     return res.status(200).json({
