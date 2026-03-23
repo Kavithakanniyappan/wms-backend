@@ -14,7 +14,7 @@ const customerSchema = new mongoose.Schema({
 
 //PACK SCHEMA
 const packSchema = new mongoose.Schema({
-  type:"Pack",
+  type:"PACK",
   pack: {
   pack_id: { type: String },
   part_number:{type:String},
