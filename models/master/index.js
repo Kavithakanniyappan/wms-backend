@@ -14,6 +14,8 @@ const customerSchema = new mongoose.Schema({
 
 //PACK SCHEMA
 const packSchema = new mongoose.Schema({
+  type:"Pack",
+  pack: {
   pack_id: { type: String },
   part_number:{type:String},
   part_name: { type: String },
@@ -22,6 +24,8 @@ const packSchema = new mongoose.Schema({
   description: { type: String },
   barcode:{type: String},
   status: { type: String, default: "Active" }
+},
+ racks: [] 
 });
 //Rack Shema
 const rackSchema = new mongoose.Schema({
@@ -39,7 +43,10 @@ const masterSchema = new mongoose.Schema({
 
   customer: customerSchema,
   pack: packSchema,
-  racks: rackSchema,  
+  racks: {
+  type: [rackSchema],
+  default: []
+} ,
 
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
