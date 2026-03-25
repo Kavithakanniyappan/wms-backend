@@ -5,31 +5,26 @@ import { v4 as uuidv4 } from "uuid";
 
  //add color function
 function getRackColor(used, total) {
-  if (used === 0) return "green";
-  if (used < total) return "yellow";
-  return "red";
+  const percentage = (used / total) * 100;
+
+  if (percentage === 0) return "green";
+  if (percentage <= 50) return "green";
+  if (percentage > 50 && percentage <= 70) return "yellow";
+  if (percentage > 70 && percentage < 100) return "orange";
+  return "red"; // >= 100
 }
 
 const packInService = {
 
   // CREATE
-  async createPackIn(req, res) {
+  async  createPackIn(req, res) {
   try {
     const data = req.body;
 
-    const requiredFields = [
-      "customer_id",
-      "customer_name",
-      "invoice_number",
-      "package_id",
-      "quantity",
-      "rack_id"
-    ];
+    const quantity = Number(data.quantity);
 
-    for (const field of requiredFields) {
-      if (!data[field]) {
-        return res.status(400).json({ message: `Missing field: ${field}` });
-      }
+    if (!data.rack_id || !data.package_id || !quantity) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
 
     // 🔹 FIND RACK
@@ -38,7 +33,7 @@ const packInService = {
     });
 
     if (!master) {
-      return res.status(400).json({ message: "Invalid rack_id" });
+      return res.status(400).json({ message: "Rack not found" });
     }
 
     const rack = master.racks.find(
@@ -50,35 +45,41 @@ const packInService = {
     }
 
     // 🔴 SPACE VALIDATION
-    if (rack.available_space < data.quantity) {
+    if (rack.available_space < quantity) {
       return res.status(400).json({
-        message: `Rack full. Available space: ${rack.available_space}`
+        message: `Rack full. Available: ${rack.available_space}`
       });
     }
 
     // 🔹 UPDATE SPACE
-    rack.used_space += data.quantity;
+    rack.used_space += quantity;
     rack.available_space = rack.total_space - rack.used_space;
 
-    // 🔹 UPDATE PACKAGE
-    const existingPackage = rack.package_details.find(
+    // 🔹 UPDATE RACK STATUS
+if (rack.used_space >= rack.total_space) {
+  rack.rack_status = "Inactive";
+} else {
+  rack.rack_status = "Active";
+}
+
+    // 🔹 PACKAGE UPDATE
+    const existing = rack.package_details.find(
       p => p.pack_id === data.package_id
     );
 
-    if (existingPackage) {
-      existingPackage.package_quantity += data.quantity;
+    if (existing) {
+      existing.package_quantity += quantity;
     } else {
       rack.package_details.push({
         pack_id: data.package_id,
         package_name: data.package_id,
-        package_quantity: data.quantity
+        package_quantity: quantity
       });
     }
 
-    // 🔹 UPDATE COLOR
+    // 🔹 COLOR UPDATE
     rack.color = getRackColor(rack.used_space, rack.total_space);
 
-    // 🔹 SAVE RACK
     await master.save();
 
     // 🔹 SAVE PACKIN
@@ -92,7 +93,7 @@ const packInService = {
       },
       package: {
         package_id: data.package_id,
-        quantity: data.quantity
+        quantity: quantity
       },
       rack: {
         rack_id: data.rack_id
@@ -102,7 +103,8 @@ const packInService = {
     await pack.save();
 
     return res.status(201).json({
-      message: "Pack-In created & rack updated",
+      message: "Pack-In success",
+      rack,
       data: pack
     });
 
@@ -110,7 +112,7 @@ const packInService = {
     return res.status(500).json({ message: err.message });
   }
 },
-  // LIST
+// LIST
   async listPackIn(req, res) {
     try {
       const data = await PackIn.find({

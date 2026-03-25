@@ -6,54 +6,34 @@ import { v4 as uuidv4 } from "uuid";
 
  //add color function
 function getRackColor(used, total) {
-  if (used === 0) return "green";
-  if (used < total) return "yellow";
-  return "red";
+  const percentage = (used / total) * 100;
+
+  if (percentage === 0) return "green";
+  if (percentage <= 50) return "green";
+  if (percentage > 50 && percentage <= 70) return "yellow";
+  if (percentage > 70 && percentage < 100) return "orange";
+  return "red"; // >= 100
 }
 
-
 const packOutService = {
-async createPackOut(req, res) {
+async  createPackOut(req, res) {
   try {
     const data = req.body;
 
-    const requiredFields = [
-      "invoice_number",
-      "package_id",
-      "quantity",
-      "rack_id"
-    ];
+    const quantity = Number(data.quantity);
 
-    for (const field of requiredFields) {
-      if (!data[field]) {
-        return res.status(400).json({
-          message: `Missing field: ${field}`
-        });
-      }
+    if (!data.rack_id || !data.package_id || !quantity) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // 🔹 VALIDATE PACKIN
-    const packInData = await PackIn.findOne({
+    // 🔹 VALIDATE PACKIN EXISTS
+    const packIn = await PackIn.findOne({
       "invoice.invoice_number": data.invoice_number,
       is_deleted: false
     });
 
-    if (!packInData) {
-      return res.status(400).json({
-        message: "Invalid invoice_number"
-      });
-    }
-
-    if (packInData.package.package_id !== data.package_id) {
-      return res.status(400).json({
-        message: "Invalid package_id"
-      });
-    }
-
-    if (packInData.rack?.rack_id !== data.rack_id) {
-      return res.status(400).json({
-        message: "Invalid rack_id"
-      });
+    if (!packIn) {
+      return res.status(400).json({ message: "Invalid invoice" });
     }
 
     // 🔹 FIND RACK
@@ -61,44 +41,60 @@ async createPackOut(req, res) {
       "racks.rack_id": data.rack_id
     });
 
+    if (!master) {
+      return res.status(400).json({ message: "Rack not found" });
+    }
+
     const rack = master.racks.find(
       r => r.rack_id === data.rack_id && !r.is_deleted
     );
 
-    // 🔹 FIND PACKAGE
-    const existingPackage = rack.package_details.find(
+    if (!rack) {
+      return res.status(400).json({ message: "Rack not found" });
+    }
+
+    // 🔴 CHECK PACKAGE
+    const existing = rack.package_details.find(
       p => p.pack_id === data.package_id
     );
 
-    if (!existingPackage) {
+    if (!existing) {
       return res.status(400).json({
         message: "Package not in rack"
       });
     }
 
-    if (existingPackage.package_quantity < data.quantity) {
+    // 🔴 CHECK QUANTITY
+    if (existing.package_quantity < quantity) {
       return res.status(400).json({
         message: "Not enough quantity"
       });
     }
 
-    // 🔹 UPDATE PACKAGE
-    existingPackage.package_quantity -= data.quantity;
+    // 🔹 REDUCE
+    existing.package_quantity -= quantity;
 
-    if (existingPackage.package_quantity === 0) {
+    // REMOVE IF ZERO
+    if (existing.package_quantity === 0) {
       rack.package_details = rack.package_details.filter(
         p => p.pack_id !== data.package_id
       );
     }
 
     // 🔹 UPDATE SPACE
-    rack.used_space -= data.quantity;
+    rack.used_space -= quantity;
     rack.available_space = rack.total_space - rack.used_space;
 
-    // 🔹 UPDATE COLOR
+    // 🔹 UPDATE RACK STATUS
+if (rack.used_space >= rack.total_space) {
+  rack.rack_status = "Inactive";
+} else {
+  rack.rack_status = "Active";
+}
+
+    // 🔹 COLOR UPDATE
     rack.color = getRackColor(rack.used_space, rack.total_space);
 
-    // 🔹 SAVE RACK
     await master.save();
 
     // 🔹 SAVE PACKOUT
@@ -106,14 +102,15 @@ async createPackOut(req, res) {
       pack_out_id: `PACKOUT_${uuidv4()}`,
       invoice_number: data.invoice_number,
       package_id: data.package_id,
-      quantity: data.quantity,
+      quantity,
       rack_id: data.rack_id
     });
 
     await pack.save();
 
     return res.status(201).json({
-      message: "Pack-Out created & rack updated"
+      message: "Pack-Out success",
+      rack
     });
 
   } catch (err) {

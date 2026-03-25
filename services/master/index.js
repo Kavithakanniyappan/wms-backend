@@ -3,9 +3,13 @@ import { v4 as uuidv4 } from "uuid";
 
 //add color function
 function getRackColor(used, total) {
-  if (used === 0) return "green";
-  if (used < total) return "yellow";
-  return "red";
+  const percentage = (used / total) * 100;
+
+  if (percentage === 0) return "green";
+  if (percentage <= 50) return "green";
+  if (percentage > 50 && percentage <= 70) return "yellow";
+  if (percentage > 70 && percentage < 100) return "orange";
+  return "red"; // >= 100
 }
 
 const masterService = {
@@ -383,22 +387,32 @@ async listRack(req, res) {
     return res.status(500).json({ message: err.message });
   }
 },
+//get by id
 async getRackById(req, res) {
   try {
     const { id } = req.params;
 
-    const data = await Master.findOne({
-      "racks.rack_id": id
+    const master = await Master.findOne({
+      "racks._id": id
     });
 
-    if (!data) {
+    if (!master) {
       return res.status(404).json({
         status: "error",
         message: "Rack not found"
       });
     }
 
-    const rack = data.racks.find(r => r.rack_id === id && !r.is_deleted);
+    const rack = master.racks.find(
+      r => r._id.toString() === id && !r.is_deleted
+    );
+
+    if (!rack) {
+      return res.status(404).json({
+        status: "error",
+        message: "Rack not found or deleted"
+      });
+    }
 
     return res.status(200).json({
       status: "success",
@@ -409,47 +423,50 @@ async getRackById(req, res) {
     return res.status(500).json({ message: err.message });
   }
 },
+//update 
 async updateRack(req, res) {
   try {
     const { id } = req.params;
     const { total_space, rack_status } = req.body;
 
     const master = await Master.findOne({
-      "racks.rack_id": id
+      "racks._id": id
     });
 
     if (!master) {
       return res.status(404).json({
-        status: "error",
         message: "Rack not found"
       });
     }
 
-    const rack = master.racks.find(r => r.rack_id === id);
+    const rack = master.racks.find(
+      r => r._id.toString() === id && !r.is_deleted
+    );
 
     if (!rack) {
       return res.status(404).json({
-        message: "Rack not found"
+        message: "Rack not found or deleted"
       });
     }
 
-    //  VALIDATION: total_space cannot be less than used_space
+    // ✅ VALIDATION
     if (total_space && total_space < rack.used_space) {
       return res.status(400).json({
         message: "total_space cannot be less than used space"
       });
     }
 
+    // ✅ UPDATE
     if (total_space) {
       rack.total_space = total_space;
-      rack.available_space = total_space - rack.used_space;
+      rack.available_space = rack.total_space - rack.used_space;
     }
 
     if (rack_status) {
       rack.rack_status = rack_status;
     }
 
-    // update color
+    // ✅ COLOR
     rack.color = getRackColor(rack.used_space, rack.total_space);
 
     await master.save();
@@ -463,12 +480,13 @@ async updateRack(req, res) {
     return res.status(500).json({ message: err.message });
   }
 },
+//delete
 async deleteRack(req, res) {
   try {
     const { id } = req.params;
 
     const master = await Master.findOne({
-      "racks.rack_id": id
+      "racks._id": id
     });
 
     if (!master) {
@@ -476,16 +494,18 @@ async deleteRack(req, res) {
         message: "Rack not found"
       });
     }
+
     const rack = master.racks.find(
-  r => r.rack_id === id && !r.is_deleted
-);
+      r => r._id.toString() === id && !r.is_deleted
+    );
 
     if (!rack) {
       return res.status(404).json({
-        message: "Rack not found"
+        message: "Rack not found or already deleted"
       });
     }
 
+    // ✅ SOFT DELETE
     rack.is_deleted = true;
 
     await master.save();
@@ -499,7 +519,6 @@ async deleteRack(req, res) {
     return res.status(500).json({ message: err.message });
   }
 }
-
 };
 
 export default masterService;
