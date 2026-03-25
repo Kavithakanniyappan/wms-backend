@@ -334,7 +334,7 @@ async createRack(req, res) {
       pack.racks = [];
     }
 
-     // DUPLICATE CHECK
+    // DUPLICATE CHECK
     // const existingRack = pack.racks.find(
     //   r => r.rack_id === data.rack_id && !r.is_deleted
     // );
@@ -345,7 +345,7 @@ async createRack(req, res) {
     //     message: "Rack already exists"
     //   });
     // }
-    // ✅ ADD YOUR VALIDATION HERE
+    // VALIDATION 
 if (data.quantity !== undefined) {
 
   if (data.quantity < 0) {
@@ -396,7 +396,6 @@ async listRack(req, res) {
     return res.status(500).json({ message: err.message });
   }
 },
-
 // GET RACK BY ID
 
 async getRackById(req, res) {
@@ -485,8 +484,7 @@ async updateRack(req, res) {
     // update fields
     if (data.quantity !== undefined) rack.quantity = data.quantity;
     if (data.rack_status) rack.rack_status = data.rack_status;
-    
-if (data.quantity !== undefined) {
+      if (data.quantity !== undefined) {
 
   // ✅ ADD VALIDATION HERE
   if (data.quantity < 0) {
@@ -560,6 +558,7 @@ async deleteRack(req, res) {
     return res.status(500).json({ message: err.message });
   }
 }
+
 };
 
 export default masterService;
