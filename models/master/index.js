@@ -45,8 +45,7 @@ const rackSchema = new mongoose.Schema({
     type: [packageDetailsSchema],
     default: []
   },
-
-  is_deleted: { type: Boolean, default: false }
+ is_deleted: { type: Boolean, default: false }
 });
 
 // MASTER 
