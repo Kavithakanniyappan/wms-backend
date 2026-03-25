@@ -24,12 +24,28 @@ const packSchema = new mongoose.Schema({
   status: { type: String, default: "Active" }
 });
 
-// RACK 
-const rackSchema = new mongoose.Schema({
-  rack_id: String,
+const packageDetailsSchema = new mongoose.Schema({
   pack_id: String,
-  quantity: Number,
-  rack_status: String,
+  package_name: String,
+  package_quantity: Number
+});
+//rack
+const rackSchema = new mongoose.Schema({
+  rack_id: { type: String, required: true },
+
+  total_space: { type: Number, required: true },
+  used_space: { type: Number, default: 0 },
+  available_space: { type: Number },
+
+  rack_status: { type: String, default: "Active" },
+
+  color: { type: String, default: "green" },
+
+  package_details: {
+    type: [packageDetailsSchema],
+    default: []
+  },
+
   is_deleted: { type: Boolean, default: false }
 });
 
@@ -37,7 +53,7 @@ const rackSchema = new mongoose.Schema({
 const masterSchema = new mongoose.Schema({
   type: { 
     type: String, 
-    enum: ["CUSTOMER", "PACK"], 
+    enum: ["CUSTOMER", "PART"], 
     required: true 
   },
 

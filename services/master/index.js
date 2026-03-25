@@ -1,6 +1,13 @@
 import Master from "../../models/master/index.js";
 import { v4 as uuidv4 } from "uuid";
 
+//add color function
+function getRackColor(used, total) {
+  if (used === 0) return "green";
+  if (used < total) return "yellow";
+  return "red";
+}
+
 const masterService = {
 // CREATE
 async createCustomerMaster(req, res) {
@@ -122,7 +129,7 @@ async createPackMaster(req, res) {
   try {
     const data = req.body;
 
-    const requiredFields = ["part_name", "customer_id", "uom"];
+    const requiredFields = ["part_number","part_name", "customer_id", "uom"];
 
     for (const field of requiredFields) {
       if (!data[field]) {
@@ -134,7 +141,7 @@ async createPackMaster(req, res) {
     }
     // DUPLICATE CHECK (PACK)
 const existingPack = await Master.findOne({
-  type: "PACK",
+  type: "PART",
   "pack.part_number": data.part_number
 });
 
@@ -146,9 +153,9 @@ if (existingPack) {
 }
 
     const pack = new Master({
-      type: "PACK",
+      type: "PART",
       pack: {
-        pack_id: `PACK_${uuidv4()}`,
+        part_id: `PART_${uuidv4()}`,
         part_number:data.part_number,
         part_name: data.part_name,
         customer_id: data.customer_id,
@@ -164,7 +171,7 @@ if (existingPack) {
 
     return res.status(201).json({
       status: "success",
-      message: "Pack created"
+      message: "Part created"
     });
 
   } catch (err) {
@@ -175,7 +182,7 @@ if (existingPack) {
 // LIST
 async listPackMaster(req, res) {
   try {
-    const data = await Master.find({ type: "PACK" });
+    const data = await Master.find({ type: "PART" });
 
     return res.status(200).json({
       status: "success",
@@ -202,9 +209,16 @@ async getPackMasterById(req, res) {
 // UPDATE
 async updatePackMaster(req, res) {
   try {
+    const updateData = {};
+
+    // Dynamically map fields to pack.*
+    for (let key in req.body) {
+      updateData[`pack.${key}`] = req.body[key];
+    }
+
     const data = await Master.findByIdAndUpdate(
       req.params.id,
-      { $set: { pack: req.body } },
+      { $set: updateData },
       { new: true }
     );
 
@@ -217,7 +231,6 @@ async updatePackMaster(req, res) {
     return res.status(500).json({ message: err.message });
   }
 },
-
 // DELETE
 async deletePackMaster(req, res) {
   try {
@@ -282,9 +295,9 @@ async commonFilter(req, res) {
       }
     }
 
-    if (type === "PACK") {
-      query.type = "PACK";
-      if (pack_name) {
+    if (type === "PART") {
+      query.type = "PART";
+      if (part_name) {
         query["pack.part_name"] = { $regex: part_name, $options: "i" };
       }
     }
@@ -304,133 +317,88 @@ async commonFilter(req, res) {
 // CREATE RACK
 async createRack(req, res) {
   try {
-    const data = req.body;
+    const { rack_id, total_space } = req.body;
 
-    const requiredFields = ["pack_id", "rack_id"];
-
-    for (const field of requiredFields) {
-      if (!data[field]) {
-        return res.status(400).json({
-          status: "error",
-          message: `Missing field: ${field}`
-        });
-      }
-    }
-
-    const pack = await Master.findOne({
-      type: "PACK",
-      "pack.pack_id": data.pack_id
-    });
-
-    if (!pack) {
+    if (!rack_id || !total_space) {
       return res.status(400).json({
         status: "error",
-        message: "Pack not found"
+        message: "rack_id and total_space are required"
       });
     }
 
-    //  FIX: initialize racks array
-    if (!pack.racks) {
-      pack.racks = [];
+    //  DUPLICATE CHECK
+   const existing = await Master.findOne({
+  racks: {
+    $elemMatch: {
+      rack_id: rack_id,
+      is_deleted: false
+    }
+  }
+});
+    if (existing) {
+      return res.status(400).json({
+        status: "error",
+        message: "Rack already exists"
+      });
     }
 
-    // DUPLICATE CHECK
-    // const existingRack = pack.racks.find(
-    //   r => r.rack_id === data.rack_id && !r.is_deleted
-    // );
+    const rack = {
+      rack_id,
+      total_space,
+      used_space: 0,
+      available_space: total_space,
+      rack_status: "Active",
+      color: "green",
+      package_details: []
+    };
 
-    // if (existingRack) {
-    //   return res.status(400).json({
-    //     status: "error",
-    //     message: "Rack already exists"
-    //   });
-    // }
-    // VALIDATION 
-if (data.quantity !== undefined) {
-
-  if (data.quantity < 0) {
-    return res.status(400).json({
-      status: "error",
-      message: `Expected space is not available for Rack ${data.rack_id}`
-    });
-  }
-
-}
-
-    pack.racks.push({
-      rack_id: data.rack_id,
-      pack_id: data.pack_id,
-      quantity: data.quantity || 0,
-      rack_status: data.rack_status || "Active",
-      is_deleted: false
-    });
-
-    await pack.save();
+    await Master.updateOne({}, { $push: { racks: rack } });
 
     return res.status(201).json({
       status: "success",
-      message: "Rack created"
+      message: "Rack created successfully"
     });
 
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
 },
-   //LIST RACKS
 async listRack(req, res) {
   try {
-    // Get all PACK documents
-    const packs = await Master.find({ type: "PACK" });
+    const data = await Master.find(
+      {},
+      { racks: 1, _id: 0 }
+    );
 
-    // Extract and flatten all racks
-    const data = packs.flatMap(pack =>
-      (pack.racks || []).filter(r => !r.is_deleted)
+    const racks = data.flatMap(item =>
+      item.racks.filter(r => !r.is_deleted)
     );
 
     return res.status(200).json({
       status: "success",
-      data
+      data: racks
     });
 
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
 },
-// GET RACK BY ID
-
 async getRackById(req, res) {
   try {
-    const { pack_id, rack_id } = req.query;
+    const { id } = req.params;
 
-    if (!pack_id || !rack_id) {
-      return res.status(400).json({
-        status: "error",
-        message: "pack_id and rack_id required"
-      });
-    }
-
-    const pack = await Master.findOne({
-      type: "PACK",
-      "pack.pack_id": pack_id
+    const data = await Master.findOne({
+      "racks.rack_id": id
     });
 
-    if (!pack) {
-      return res.status(400).json({
-        status: "error",
-        message: "Pack not found"
-      });
-    }
-
-    const rack = (pack.racks || []).find(
-      r => r.rack_id === rack_id && !r.is_deleted
-    );
-
-    if (!rack) {
-      return res.status(400).json({
+    if (!data) {
+      return res.status(404).json({
         status: "error",
         message: "Rack not found"
       });
     }
+
+    const rack = data.racks.find(r => r.rack_id === id && !r.is_deleted);
 
     return res.status(200).json({
       status: "success",
@@ -441,62 +409,50 @@ async getRackById(req, res) {
     return res.status(500).json({ message: err.message });
   }
 },
-
-
-   //UPDATE RACK
-
 async updateRack(req, res) {
   try {
-    const data = req.body;
+    const { id } = req.params;
+    const { total_space, rack_status } = req.body;
 
-    const { pack_id, rack_id } = data;
-
-    if (!pack_id || !rack_id) {
-      return res.status(400).json({
-        status: "error",
-        message: "pack_id and rack_id required"
-      });
-    }
-
-    const pack = await Master.findOne({
-      type: "PACK",
-      "pack.pack_id": pack_id
+    const master = await Master.findOne({
+      "racks.rack_id": id
     });
 
-    if (!pack) {
-      return res.status(400).json({
-        status: "error",
-        message: "Pack not found"
-      });
-    }
-
-    const rack = (pack.racks || []).find(
-      r => r.rack_id === rack_id && !r.is_deleted
-    );
-
-    if (!rack) {
-      return res.status(400).json({
+    if (!master) {
+      return res.status(404).json({
         status: "error",
         message: "Rack not found"
       });
     }
 
-    // update fields
-    if (data.quantity !== undefined) rack.quantity = data.quantity;
-    if (data.rack_status) rack.rack_status = data.rack_status;
-      if (data.quantity !== undefined) {
+    const rack = master.racks.find(r => r.rack_id === id);
 
-  // ✅ ADD VALIDATION HERE
-  if (data.quantity < 0) {
-    return res.status(400).json({
-      status: "error",
-      message: `Expected space is not available for Rack ${rack_id}`
-    });
-  }
+    if (!rack) {
+      return res.status(404).json({
+        message: "Rack not found"
+      });
+    }
 
-  rack.quantity = data.quantity;
-}
-    await pack.save();
+    //  VALIDATION: total_space cannot be less than used_space
+    if (total_space && total_space < rack.used_space) {
+      return res.status(400).json({
+        message: "total_space cannot be less than used space"
+      });
+    }
+
+    if (total_space) {
+      rack.total_space = total_space;
+      rack.available_space = total_space - rack.used_space;
+    }
+
+    if (rack_status) {
+      rack.rack_status = rack_status;
+    }
+
+    // update color
+    rack.color = getRackColor(rack.used_space, rack.total_space);
+
+    await master.save();
 
     return res.status(200).json({
       status: "success",
@@ -507,51 +463,36 @@ async updateRack(req, res) {
     return res.status(500).json({ message: err.message });
   }
 },
-
- //DELETE RACK 
-
 async deleteRack(req, res) {
   try {
-    const { pack_id, rack_id } = req.body;
+    const { id } = req.params;
 
-    if (!pack_id || !rack_id) {
-      return res.status(400).json({
-        status: "error",
-        message: "pack_id and rack_id required"
-      });
-    }
-
-    const pack = await Master.findOne({
-      type: "PACK",
-      "pack.pack_id": pack_id
+    const master = await Master.findOne({
+      "racks.rack_id": id
     });
 
-    if (!pack) {
-      return res.status(400).json({
-        status: "error",
-        message: "Pack not found"
+    if (!master) {
+      return res.status(404).json({
+        message: "Rack not found"
       });
     }
-
-    const rack = (pack.racks || []).find(
-      r => r.rack_id === rack_id && !r.is_deleted
-    );
+    const rack = master.racks.find(
+  r => r.rack_id === id && !r.is_deleted
+);
 
     if (!rack) {
-      return res.status(400).json({
-        status: "error",
+      return res.status(404).json({
         message: "Rack not found"
       });
     }
 
-    //  SOFT DELETE
     rack.is_deleted = true;
 
-    await pack.save();
+    await master.save();
 
     return res.status(200).json({
       status: "success",
-      message: "Rack deleted"
+      message: "Rack deleted successfully"
     });
 
   } catch (err) {

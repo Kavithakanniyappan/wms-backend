@@ -1,10 +1,19 @@
 import PackOut from "../../models/packOut/index.js";
 import PackIn from "../../models/packIn/index.js";
+import Master from "../../models/master/index.js";
+import ExcelJS from "exceljs";
 import { v4 as uuidv4 } from "uuid";
 
-const packOutService = {
+ //add color function
+function getRackColor(used, total) {
+  if (used === 0) return "green";
+  if (used < total) return "yellow";
+  return "red";
+}
 
- async createPackOut(req, res) {
+
+const packOutService = {
+async createPackOut(req, res) {
   try {
     const data = req.body;
 
@@ -18,13 +27,12 @@ const packOutService = {
     for (const field of requiredFields) {
       if (!data[field]) {
         return res.status(400).json({
-          status: "error",
-          message: `Missing required field: ${field}`
+          message: `Missing field: ${field}`
         });
       }
     }
 
-    // ✅ STEP 1: CHECK PACKIN EXISTS
+    // 🔹 VALIDATE PACKIN
     const packInData = await PackIn.findOne({
       "invoice.invoice_number": data.invoice_number,
       is_deleted: false
@@ -32,99 +40,86 @@ const packOutService = {
 
     if (!packInData) {
       return res.status(400).json({
-        status: "error",
-        message: "Invalid invoice_number: No PackIn record found"
+        message: "Invalid invoice_number"
       });
     }
 
-    // ✅ STEP 2: VALIDATE PACKAGE MATCH
-    if (packInData.package?.package_id !== data.package_id) {
+    if (packInData.package.package_id !== data.package_id) {
       return res.status(400).json({
-        status: "error",
-        message: "Invalid package_id for this invoice"
+        message: "Invalid package_id"
       });
     }
 
-    // ✅ STEP 3: VALIDATE RACK (if stored in PackIn)
-    if (packInData.rack_id && packInData.rack_id !== data.rack_id) {
+    if (packInData.rack?.rack_id !== data.rack_id) {
       return res.status(400).json({
-        status: "error",
-        message: "Invalid rack_id for this invoice"
+        message: "Invalid rack_id"
       });
     }
 
-    // ✅ STEP 4: CHECK DUPLICATE (invoice + package + rack)
-    const existingPackOut = await PackOut.findOne({
-      invoice_number: data.invoice_number,
-      package_id: data.package_id,
-      rack_id: data.rack_id,
-      is_deleted: false
+    // 🔹 FIND RACK
+    const master = await Master.findOne({
+      "racks.rack_id": data.rack_id
     });
 
-    if (existingPackOut) {
+    const rack = master.racks.find(
+      r => r.rack_id === data.rack_id && !r.is_deleted
+    );
+
+    // 🔹 FIND PACKAGE
+    const existingPackage = rack.package_details.find(
+      p => p.pack_id === data.package_id
+    );
+
+    if (!existingPackage) {
       return res.status(400).json({
-        status: "error",
-        message: "Duplicate entry: PackOut already exists for this combination"
+        message: "Package not in rack"
       });
     }
 
-    // ✅ STEP 5: CHECK AVAILABLE QUANTITY
-    const totalPackedInQty = packInData.package?.quantity || 0;
-
-    const totalPackedOutQty = await PackOut.aggregate([
-      {
-        $match: {
-          invoice_number: data.invoice_number,
-          package_id: data.package_id,
-          rack_id: data.rack_id,
-          is_deleted: false
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$quantity" }
-        }
-      }
-    ]);
-
-    const usedQty = totalPackedOutQty.length > 0 ? totalPackedOutQty[0].total : 0;
-
-    const remainingQty = totalPackedInQty - usedQty;
-
-    if (data.quantity > remainingQty) {
+    if (existingPackage.package_quantity < data.quantity) {
       return res.status(400).json({
-        status: "error",
-        message: `Quantity exceeded. Available: ${remainingQty}`
+        message: "Not enough quantity"
       });
     }
 
-    // ✅ STEP 6: CREATE PACKOUT
-    const packOutData = {
-      pack_out_id: `packout_${uuidv4()}`,
-      customer_name: packInData.invoice?.customer_name,
+    // 🔹 UPDATE PACKAGE
+    existingPackage.package_quantity -= data.quantity;
+
+    if (existingPackage.package_quantity === 0) {
+      rack.package_details = rack.package_details.filter(
+        p => p.pack_id !== data.package_id
+      );
+    }
+
+    // 🔹 UPDATE SPACE
+    rack.used_space -= data.quantity;
+    rack.available_space = rack.total_space - rack.used_space;
+
+    // 🔹 UPDATE COLOR
+    rack.color = getRackColor(rack.used_space, rack.total_space);
+
+    // 🔹 SAVE RACK
+    await master.save();
+
+    // 🔹 SAVE PACKOUT
+    const pack = new PackOut({
+      pack_out_id: `PACKOUT_${uuidv4()}`,
       invoice_number: data.invoice_number,
       package_id: data.package_id,
       quantity: data.quantity,
       rack_id: data.rack_id
-    };
+    });
 
-    const pack = new PackOut(packOutData);
     await pack.save();
 
     return res.status(201).json({
-      status: "success",
-      message: "Pack OUT created successfully"
+      message: "Pack-Out created & rack updated"
     });
 
   } catch (err) {
-    return res.status(500).json({
-      status: "error",
-      message: err.message
-    });
+    return res.status(500).json({ message: err.message });
   }
 },
-
   async listPackOut(req, res) {
     try {
       const packs = await PackOut.find({ is_deleted: false });
@@ -291,7 +286,42 @@ const packOutService = {
         message: err.message
       });
     }
+  },
+  async downloadPackOutExcel(req, res) {
+    const data = await PackOut.find({ is_deleted: false });
+  
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("PackOut");
+  
+    sheet.columns = [
+      
+      { header: "Invoice", key: "invoice" },
+      { header: "Package", key: "package" },
+      { header: "Quantity", key: "quantity" },
+      { header: "Rack", key: "rack" }
+    ];
+  
+    data.forEach(item => {
+      sheet.addRow({
+  
+        invoice: item.invoice?.invoice_number,
+        package: item.package?.package_id,
+        quantity: item.package?.quantity,
+        rack: item.rack?.rack_id
+      });
+    });
+  
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+  
+    res.setHeader("Content-Disposition", "attachment; filename=packin.xlsx");
+  
+    await workbook.xlsx.write(res);
+    res.end();
   }
+  
 
 };
 
