@@ -335,17 +335,28 @@ async createRack(req, res) {
     }
 
     // DUPLICATE CHECK
-    const existingRack = pack.racks.find(
-      r => r.rack_id === data.rack_id && !r.is_deleted
-    );
+    // const existingRack = pack.racks.find(
+    //   r => r.rack_id === data.rack_id && !r.is_deleted
+    // );
 
-    if (existingRack) {
-      return res.status(400).json({
-        status: "error",
-        message: "Rack already exists"
-      });
-    }
+    // if (existingRack) {
+    //   return res.status(400).json({
+    //     status: "error",
+    //     message: "Rack already exists"
+    //   });
+    // }
+  
+ // ✅ ADD YOUR VALIDATION HERE
+if (data.quantity !== undefined) {
 
+  if (data.quantity < 0) {
+    return res.status(400).json({
+      status: "error",
+      message: `Expected space is not available for Rack ${data.rack_id}`
+    });
+  }
+
+}
     pack.racks.push({
       rack_id: data.rack_id,
       pack_id: data.pack_id,
@@ -473,6 +484,20 @@ async updateRack(req, res) {
     // update fields
     if (data.quantity !== undefined) rack.quantity = data.quantity;
     if (data.rack_status) rack.rack_status = data.rack_status;
+
+    
+if (data.quantity !== undefined) {
+
+  // ✅ ADD VALIDATION HERE
+  if (data.quantity < 0) {
+    return res.status(400).json({
+      status: "error",
+      message: `Expected space is not available for Rack ${rack_id}`
+    });
+  }
+
+  rack.quantity = data.quantity;
+}
 
     await pack.save();
 
