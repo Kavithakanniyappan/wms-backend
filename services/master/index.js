@@ -377,7 +377,6 @@ if (data.quantity !== undefined) {
   }
 },
    //LIST RACKS
-
 async listRack(req, res) {
   try {
     // Get all PACK documents
