@@ -366,31 +366,15 @@ async createRack(req, res) {
   }
 },
    //LIST RACKS
-
 async listRack(req, res) {
   try {
-    const { pack_id } = req.query;
+    // Get all PACK documents
+    const packs = await Master.find({ type: "PACK" });
 
-    if (!pack_id) {
-      return res.status(400).json({
-        status: "error",
-        message: "pack_id is required"
-      });
-    }
-
-    const pack = await Master.findOne({
-      type: "PACK",
-      "pack.pack_id": pack_id
-    });
-
-    if (!pack) {
-      return res.status(400).json({
-        status: "error",
-        message: "Pack not found"
-      });
-    }
-
-    const data = (pack.racks || []).filter(r => !r.is_deleted);
+    // Extract and flatten all racks
+    const data = packs.flatMap(pack =>
+      (pack.racks || []).filter(r => !r.is_deleted)
+    );
 
     return res.status(200).json({
       status: "success",
