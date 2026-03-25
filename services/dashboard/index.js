@@ -54,7 +54,7 @@ const dashboardService = {
       throw new Error(error.message);
     }
   },
-  async getDashboardSummary() {
+ async getDashboardSummary() {
   try {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -63,7 +63,8 @@ const dashboardService = {
       activeCustomers,
       activeParts,
       packInToday,
-      packOutToday
+      packOutToday,
+      masters
     ] = await Promise.all([
 
       // Active Customers
@@ -88,20 +89,35 @@ const dashboardService = {
       PackOut.countDocuments({
         created_at: { $gte: todayStart },
         is_deleted: false
-      })
+      }),
+
+      // Fetch Masters with active racks
+      Master.find({ "racks.rack_status": "Active" })
     ]);
+
+    // 🔹 Calculate occupancy for one rack (first active found)
+    let rackOccupancy = null;
+    for (const master of masters) {
+      const rack = master.racks.find(r => r.rack_status === "Active");
+      if (rack) {
+        rackOccupancy = rack.total_space
+          ? Math.round((rack.used_space / rack.total_space) * 100)
+          : 0;
+        break; // only first rack
+      }
+    }
 
     return {
       activeCustomers,
       activeParts,
-      todayMoves: packInToday + packOutToday
+      todayMoves: packInToday + packOutToday,
+      rackOccupancy // <-- added single rack occupancy
     };
 
   } catch (error) {
     throw new Error(error.message);
   }
 }
-
 };
 
 export default dashboardService;
