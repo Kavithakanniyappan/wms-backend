@@ -70,8 +70,11 @@ if (existingCustomer) {
 // LIST
 async listCustomerMaster(req, res) {
   try {
-    const data = await Master.find({ type: "CUSTOMER" });
 
+    const data = await Master.find({
+  type: "CUSTOMER",
+  "customer.is_deleted": { $ne: true }
+});
     return res.status(200).json({
       status: "success",
       data
@@ -116,18 +119,34 @@ async updateCustomerMaster(req, res) {
 // DELETE
 async deleteCustomerMaster(req, res) {
   try {
-    await Master.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+
+    const data = await Master.findOne({
+      _id: id,
+      type: "CUSTOMER"
+    });
+
+    if (!data) {
+      return res.status(404).json({
+        status: "error",
+        message: "Customer not found"
+      });
+    }
+
+    data.customer.status = "Inactive";
+    data.customer.is_deleted = true; // 🔴 ADD THIS
+
+    await data.save();
 
     return res.status(200).json({
       status: "success",
-      message: "Deleted"
+      message: "Customer soft deleted"
     });
 
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
 },
-
 // CREATE
 async createPackMaster(req, res) {
   try {
@@ -186,7 +205,10 @@ if (existingPack) {
 // LIST
 async listPackMaster(req, res) {
   try {
-    const data = await Master.find({ type: "PART" });
+    const data = await Master.find({
+  type: "PART",
+  "pack.is_deleted": { $ne: true }
+});
 
     return res.status(200).json({
       status: "success",
@@ -238,11 +260,28 @@ async updatePackMaster(req, res) {
 // DELETE
 async deletePackMaster(req, res) {
   try {
-    await Master.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+
+    const data = await Master.findOne({
+      _id: id,
+      type: "PART"
+    });
+
+    if (!data) {
+      return res.status(404).json({
+        status: "error",
+        message: "Part not found"
+      });
+    }
+
+    data.pack.status = "Inactive";
+    data.pack.is_deleted = true; // 🔴 ADD THIS
+
+    await data.save();
 
     return res.status(200).json({
       status: "success",
-      message: "Deleted"
+      message: "Part soft deleted"
     });
 
   } catch (err) {

@@ -317,9 +317,70 @@ if (rack.used_space >= rack.total_space) {
   
     await workbook.xlsx.write(res);
     res.end();
-  }
-  
+  },
+  async rackDropdown(req, res) {
+  try {
+    const { package_id } = req.query;
 
+    // Step 1: get PackIn data (invoice + package)
+    const packInData = await PackIn.find(
+      package_id
+        ? { "package.package_id": package_id, is_deleted: false }
+        : { is_deleted: false },
+      {
+        "invoice.invoice_number": 1,
+        "package.package_id": 1,
+        _id: 0
+      }
+    );
+
+    // Step 2: get Master data (rack mapping)
+    const masterData = await Master.find(
+      package_id
+        ? { "racks.package_details.pack_id": package_id }
+        : {},
+      {
+        "racks.rack_id": 1,
+        "racks.package_details": 1,
+        _id: 0
+      }
+    );
+
+    const result = [];
+
+    masterData.forEach(master => {
+      master.racks?.forEach(rack => {
+        rack.package_details?.forEach(pkg => {
+
+          if (!package_id || pkg.pack_id === package_id) {
+
+            const pack = packInData.find(
+              p => p.package?.package_id === pkg.pack_id
+            );
+
+            result.push({
+              invoice_number: pack?.invoice?.invoice_number || null,
+              package_id: pkg.pack_id,
+              rack_id: rack.rack_id
+            });
+          }
+
+        });
+      });
+    });
+
+    return res.status(200).json({
+      status: "success",
+      data: result
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      status: "error",
+      message: err.message
+    });
+  }
+}
 };
 
 export default packOutService;
