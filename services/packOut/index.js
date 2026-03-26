@@ -185,27 +185,48 @@ if (rack.used_space >= rack.total_space) {
   },
 
   async deletePackOut(req, res) {
-    try {
-      const { id } = req.query;
+  try {
+    const { id } = req.query;
 
-      await PackOut.findByIdAndUpdate(id, {
-        is_deleted: true
-      });
+    // 🔹 Step 1: Get PackOut record
+    const packOut = await PackOut.findById(id);
 
-      return res.status(200).json({
-        status: "success",
-        message: "Pack OUT deleted"
-      });
-
-    } catch (err) {
-      return res.status(500).json({
+    if (!packOut) {
+      return res.status(404).json({
         status: "error",
-        message: err.message
+        message: "Pack OUT not found"
       });
     }
-  },
 
-  // ✅ KEEP THIS (no changes)
+    // 🔹 Step 2: Update PackOut → is_deleted = true
+    packOut.is_deleted = true;
+    await packOut.save();
+
+    // 🔹 Step 3: ALSO update PackIn (IMPORTANT FIX)
+    await PackIn.updateMany(
+      {
+        "invoice.invoice_number": packOut.invoice_number,
+        "package.package_id": packOut.package_id,
+        is_deleted: false
+      },
+      {
+        $set: { is_deleted: true }
+      }
+    );
+
+    return res.status(200).json({
+      status: "success",
+      message: "Pack OUT deleted and Pack IN updated"
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      status: "error",
+      message: err.message
+    });
+  }
+},
+  // ✅ KEEP THIS 
   async getPackDetails(req, res) {
     try {
       const { invoice_number } = req.query;
