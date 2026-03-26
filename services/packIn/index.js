@@ -97,7 +97,10 @@ if (rack.used_space >= rack.total_space) {
       },
       rack: {
         rack_id: data.rack_id
-      }
+      },
+      completion: {
+          notes: data.notes
+        }
     });
 
     await pack.save();
