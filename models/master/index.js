@@ -9,7 +9,8 @@ const customerSchema = new mongoose.Schema({
   contact_number: String,
   email: String,
   address: String,
-  status: { type: String, default: "Active" }
+  status: { type: String, default: "Active" },
+  is_deleted: { type: Boolean, default: false }
 });
 
 // PACK 
@@ -21,7 +22,8 @@ const packSchema = new mongoose.Schema({
   uom: String,
   description: String,
   barcode: String,
-  status: { type: String, default: "Active" }
+  status: { type: String, default: "Active" },
+  is_deleted: { type: Boolean, default: false }
 });
 
 const packageDetailsSchema = new mongoose.Schema({

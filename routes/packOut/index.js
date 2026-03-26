@@ -17,6 +17,8 @@ router.get("/invoice-dropdown",(req,res) =>packOutController.invoiceDropdown(req
 
 router.get("/pack-details",(req,res)=>packOutController.getPackDetails(req,res));
 
+router.get("/rack-by-package", (req, res) =>packOutController.rackDropdown(req, res));
+
 router.get("/download-excel", (req, res) => packOutController.downloadPackOutExcel(req, res));
 
 export default router;
