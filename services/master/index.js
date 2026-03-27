@@ -74,7 +74,7 @@ async listCustomerMaster(req, res) {
     const data = await Master.find({
   type: "CUSTOMER",
   "customer.is_deleted": { $ne: true }
-});
+}).select("-racks");
     return res.status(200).json({
       status: "success",
       data

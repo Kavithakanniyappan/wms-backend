@@ -207,6 +207,7 @@ if (rack.used_space >= rack.total_space) {
       {
         "invoice.invoice_number": packOut.invoice_number,
         "package.package_id": packOut.package_id,
+         "rack.rack_id":packOut.rack_id,
         is_deleted: false
       },
       {
