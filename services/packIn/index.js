@@ -345,38 +345,89 @@ if (rack.used_space >= rack.total_space) {
   },
   
 async downloadPackInExcel(req, res) {
-  const data = await PackIn.find({ is_deleted: false });
+  try {
+    const { startDate, endDate, rack_id, package_id, customer_id } = req.query;
 
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("PackIn");
+    let filter = { is_deleted: false };
 
-  sheet.columns = [
-    
-    { header: "Invoice", key: "invoice" },
-    { header: "Package", key: "package" },
-    { header: "Quantity", key: "quantity" },
-    { header: "Rack", key: "rack" }
-  ];
+    // 🔹 Date Filter
+    if (startDate && endDate) {
+      filter.created_at = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
 
-  data.forEach(item => {
-    sheet.addRow({
+    // 🔹 Rack Filter
+    if (rack_id) {
+      filter["rack.rack_id"] = rack_id;
+    }
 
-      invoice: item.invoice?.invoice_number,
-      package: item.package?.package_id,
-      quantity: item.package?.quantity,
-      rack: item.rack?.rack_id
+    // 🔹 Package Filter
+    if (package_id) {
+      filter["package.package_id"] = package_id;
+    }
+
+    // 🔹 Customer Filter
+    if (customer_id) {
+      filter["invoice.customer_id"] = customer_id;
+    }
+
+    const data = await PackIn.find(filter).sort({ created_at: -1 });
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("PackIn");
+
+    // ✅ Headers
+    sheet.columns = [
+      { header: "Date", key: "date", width: 15 },
+      { header: "Time", key: "time", width: 15 },
+      { header: "Customer ID", key: "customer_id", width: 20 },
+      { header: "Customer Name", key: "customer_name", width: 25 },
+      { header: "Invoice Number", key: "invoice", width: 25 },
+      { header: "Package ID", key: "package", width: 20 },
+      { header: "Quantity", key: "quantity", width: 15 },
+      { header: "Rack ID", key: "rack", width: 20 }
+    ];
+
+    // ✅ Data Rows
+    data.forEach(item => {
+      const createdAt = item.created_at ? new Date(item.created_at) : new Date();
+
+      sheet.addRow({
+        date: createdAt.toLocaleDateString("en-GB"),
+        time: createdAt.toLocaleTimeString("en-IN"),
+        customer_id: item.invoice?.customer_id || "-",
+        customer_name: item.invoice?.customer_name || "-",
+        invoice: item.invoice?.invoice_number || "-",
+        package: item.package?.package_id || "-",
+        quantity: item.package?.quantity || 0,
+        rack: item.rack?.rack_id || "-"
+      });
     });
-  });
 
-  res.setHeader(
-    "Content-Type",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-  );
+    // ✅ Excel Filter
+    sheet.autoFilter = { from: "A1", to: "H1" };
 
-  res.setHeader("Content-Disposition", "attachment; filename=packin.xlsx");
+    // ✅ Header Style
+    sheet.getRow(1).font = { bold: true };
 
-  await workbook.xlsx.write(res);
-  res.end();
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=packin.xlsx"
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 }
 
 };

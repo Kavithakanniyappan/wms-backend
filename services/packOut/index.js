@@ -307,39 +307,86 @@ if (rack.used_space >= rack.total_space) {
     }
   },
   async downloadPackOutExcel(req, res) {
-    const data = await PackOut.find({ is_deleted: false });
-  
+  try {
+    const { startDate, endDate, rack_id, package_id, invoice_number } = req.query;
+
+    let filter = { is_deleted: false };
+
+    // 🔹 Date Filter
+    if (startDate && endDate) {
+      filter.created_at = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+
+    // 🔹 Rack Filter
+    if (rack_id) {
+      filter.rack_id = rack_id;
+    }
+
+    // 🔹 Package Filter
+    if (package_id) {
+      filter.package_id = package_id;
+    }
+
+    // 🔹 Invoice Filter
+    if (invoice_number) {
+      filter.invoice_number = invoice_number;
+    }
+
+    const data = await PackOut.find(filter).sort({ created_at: -1 });
+
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("PackOut");
-  
+
+    // ✅ Headers
     sheet.columns = [
-      
-      { header: "Invoice", key: "invoice" },
-      { header: "Package", key: "package" },
-      { header: "Quantity", key: "quantity" },
-      { header: "Rack", key: "rack" }
+      { header: "Date", key: "date", width: 15 },
+      { header: "Time", key: "time", width: 15 },
+      { header: "Invoice Number", key: "invoice", width: 25 },
+      { header: "Package ID", key: "package", width: 20 },
+      { header: "Quantity", key: "quantity", width: 15 },
+      { header: "Rack ID", key: "rack", width: 20 }
     ];
-  
+
+    // ✅ Data Rows
     data.forEach(item => {
+      const createdAt = item.created_at ? new Date(item.created_at) : new Date();
+
       sheet.addRow({
-  
-        invoice: item.invoice?.invoice_number,
-        package: item.package?.package_id,
-        quantity: item.package?.quantity,
-        rack: item.rack?.rack_id
+        date: createdAt.toLocaleDateString("en-GB"),
+        time: createdAt.toLocaleTimeString("en-IN"),
+        invoice: item.invoice_number || "-",
+        package: item.package_id || "-",
+        quantity: item.quantity || 0,
+        rack: item.rack_id || "-"
       });
     });
-  
+
+    // ✅ Excel Filter
+    sheet.autoFilter = { from: "A1", to: "F1" };
+
+    // ✅ Header Style
+    sheet.getRow(1).font = { bold: true };
+
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
-  
-    res.setHeader("Content-Disposition", "attachment; filename=packin.xlsx");
-  
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=packout.xlsx"
+    );
+
     await workbook.xlsx.write(res);
     res.end();
-  },
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+},
   async rackDropdown(req, res) {
   try {
     const { package_id } = req.query;
