@@ -314,11 +314,16 @@ if (rack.used_space >= rack.total_space) {
 
     // 🔹 Date Filter
     if (startDate && endDate) {
-      filter.created_at = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
-      };
-    }
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  end.setHours(23, 59, 59, 999); // 🔥 IMPORTANT
+
+  filter.created_at = {
+    $gte: start,
+    $lte: end
+  };
+}
 
     // 🔹 Rack Filter
     if (rack_id) {
