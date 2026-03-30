@@ -306,7 +306,7 @@ if (rack.used_space >= rack.total_space) {
       });
     }
   },
-  async downloadPackOutExcel(req, res) {
+ async downloadPackOutExcel(req, res) {
   try {
     const {
       startDate,
@@ -314,8 +314,6 @@ if (rack.used_space >= rack.total_space) {
       rack_id,
       package_id,
       invoice_number,
-      customer_id,
-      customer_name,
       quantity
     } = req.query;
 
@@ -333,40 +331,29 @@ if (rack.used_space >= rack.total_space) {
       };
     }
 
+    // ✅ FIXED: Direct fields (NO nesting)
+
     // 🔹 Rack Filter
     if (rack_id) {
-      filter["rack.rack_id"] = rack_id;
+      filter.rack_id = rack_id;
     }
 
     // 🔹 Package Filter
     if (package_id) {
-      filter["package.package_id"] = package_id;
+      filter.package_id = package_id;
     }
 
-    // 🔹 Invoice Number Filter (case-insensitive)
+    // 🔹 Invoice Filter (case-insensitive)
     if (invoice_number) {
-      filter["invoice.invoice_number"] = {
+      filter.invoice_number = {
         $regex: invoice_number,
-        $options: "i"
-      };
-    }
-
-    // 🔹 Customer ID Filter
-    if (customer_id) {
-      filter["invoice.customer_id"] = customer_id;
-    }
-
-    // 🔹 Customer Name Filter (case-insensitive)
-    if (customer_name) {
-      filter["invoice.customer_name"] = {
-        $regex: customer_name,
         $options: "i"
       };
     }
 
     // 🔹 Quantity Filter
     if (quantity) {
-      filter["package.quantity"] = Number(quantity);
+      filter.quantity = Number(quantity);
     }
 
     console.log("FILTER:", filter);
@@ -378,38 +365,31 @@ if (rack.used_space >= rack.total_space) {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("PackOut");
 
-    // ✅ Headers
+    // ✅ Headers (same as yours)
     sheet.columns = [
       { header: "Date", key: "date", width: 15 },
       { header: "Time", key: "time", width: 15 },
-      { header: "Customer ID", key: "customer_id", width: 20 },
-      { header: "Customer Name", key: "customer_name", width: 25 },
       { header: "Invoice Number", key: "invoice", width: 25 },
       { header: "Package ID", key: "package", width: 20 },
       { header: "Quantity", key: "quantity", width: 15 },
       { header: "Rack ID", key: "rack", width: 20 }
     ];
 
-    // ✅ Data Rows
+    // ✅ FIXED: Direct mapping
     data.forEach(item => {
       const createdAt = item.created_at ? new Date(item.created_at) : new Date();
 
       sheet.addRow({
         date: createdAt.toLocaleDateString("en-GB"),
         time: createdAt.toLocaleTimeString("en-IN"),
-        customer_id: item.invoice?.customer_id || "-",
-        customer_name: item.invoice?.customer_name || "-",
-        invoice: item.invoice?.invoice_number || "-",
-        package: item.package?.package_id || "-",
-        quantity: item.package?.quantity || 0,
-        rack: item.rack?.rack_id || "-"
+        invoice: item.invoice_number || "-",
+        package: item.package_id || "-",
+        quantity: item.quantity || 0,
+        rack: item.rack_id || "-"
       });
     });
 
-    // ✅ Excel Filter
-    sheet.autoFilter = { from: "A1", to: "H1" };
-
-    // ✅ Header Style
+    sheet.autoFilter = { from: "A1", to: "F1" };
     sheet.getRow(1).font = { bold: true };
 
     res.setHeader(
