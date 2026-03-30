@@ -343,25 +343,33 @@ if (rack.used_space >= rack.total_space) {
       return res.status(500).json({ message: err.message });
     }
   },
-  
-async downloadPackInExcel(req, res) {
+ async downloadPackInExcel(req, res) {
   try {
-    const { startDate, endDate, rack_id, package_id, customer_id } = req.query;
+    const {
+      startDate,
+      endDate,
+      rack_id,
+      package_id,
+      customer_id,
+      customer_name,
+      invoice_number,
+      quantity
+    } = req.query;
 
     let filter = { is_deleted: false };
 
     // 🔹 Date Filter
     if (startDate && endDate) {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
 
-  end.setHours(23, 59, 59, 999); // 🔥 IMPORTANT
+      filter.created_at = {
+        $gte: start,
+        $lte: end
+      };
+    }
 
-  filter.created_at = {
-    $gte: start,
-    $lte: end
-  };
-}
     // 🔹 Rack Filter
     if (rack_id) {
       filter["rack.rack_id"] = rack_id;
@@ -372,12 +380,37 @@ async downloadPackInExcel(req, res) {
       filter["package.package_id"] = package_id;
     }
 
-    // 🔹 Customer Filter
+    // 🔹 Customer ID Filter
     if (customer_id) {
       filter["invoice.customer_id"] = customer_id;
     }
 
+    // 🔹 Customer Name Filter (case-insensitive)
+    if (customer_name) {
+      filter["invoice.customer_name"] = {
+        $regex: customer_name,
+        $options: "i"
+      };
+    }
+
+    // 🔹 Invoice Number Filter (case-insensitive)
+    if (invoice_number) {
+      filter["invoice.invoice_number"] = {
+        $regex: invoice_number,
+        $options: "i"
+      };
+    }
+
+    // 🔹 Quantity Filter
+    if (quantity) {
+      filter["package.quantity"] = Number(quantity);
+    }
+
+    console.log("FILTER:", filter);
+
     const data = await PackIn.find(filter).sort({ created_at: -1 });
+
+    console.log("DATA COUNT:", data.length);
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("PackIn");
@@ -433,7 +466,6 @@ async downloadPackInExcel(req, res) {
     return res.status(500).json({ message: err.message });
   }
 }
-
 };
 
 export default packInService;
