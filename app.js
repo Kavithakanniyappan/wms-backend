@@ -15,12 +15,13 @@ const app = express();
 
 app.use(express.json());
 app.use(cors({
-    origin: [
-        "http://localhost:3000",
-        "https://wms-website-q69a.onrender.com"
-    ],
-    credentials: true
+  origin: "https://wms-website-q69a.onrender.com",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
+
 
 mongoose.connect(process.env.MONGODB_URI)
 .then(()=>{
