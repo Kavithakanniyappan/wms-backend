@@ -15,12 +15,11 @@ const app = express();
 
 app.use(express.json());
 app.use(cors({
-  origin: "https://wms-website-q69a.onrender.com",
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  origin: true,
   credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
-app.use( cors());
 
 
 
