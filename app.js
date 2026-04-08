@@ -1,7 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-
+import cors from "cors";
 import packInRoutes from "./routes/packIn/index.js";
 import packOutRoutes from "./routes/packOut/index.js";
 import masterRoutes from "./routes/master/index.js";
@@ -14,6 +14,13 @@ dotenv.config();
 const app = express();
 
 app.use(express.json());
+app.use(cors({
+    origin: [
+        "http://localhost:3000",
+        "https://wms-website-q69a.onrender.com"
+    ],
+    credentials: true
+}));
 
 mongoose.connect(process.env.MONGODB_URI)
 .then(()=>{
