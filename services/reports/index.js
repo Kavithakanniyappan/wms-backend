@@ -5,17 +5,17 @@ const reportsService = {
 
   async getReports(filters) {
     try {
-      let { type, customer, invoice, part, from, to } = filters;
+      let { type, customer, invoice, part, place, from, to } = filters;
 
-      // 🔥 Normalize type
+      // Normalize type
       const normalizedType = type ? type.toUpperCase() : null;
 
-      // 🔹 Common Query
+      // Common Query
       let query = {
         is_deleted: false
       };
 
-      // 🔹 Optional Filters
+      // Optional Filters
       if (customer) {
         query.customer_name = customer;
       }
@@ -28,7 +28,11 @@ const reportsService = {
         query.part_number = part;
       }
 
-      // 🔹 Date Filter
+      if (place) {
+        query.place = place;
+      }
+
+      // Date Filter
       if (from && to) {
         query.created_at = {
           $gte: new Date(from),
@@ -38,7 +42,7 @@ const reportsService = {
 
       let data = [];
 
-      // 🔥 MAIN LOGIC
+      // Main Logic
       if (normalizedType === "PART_IN") {
 
         data = await PackIn.find(query).sort({ created_at: -1 });
@@ -49,11 +53,9 @@ const reportsService = {
 
       } else if (!normalizedType) {
 
-        // 🔥 GET BOTH
         const packInData = await PackIn.find(query);
         const packOutData = await PackOut.find(query);
 
-        // 🔥 Merge + Sort
         data = [...packInData, ...packOutData].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
         );
