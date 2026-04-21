@@ -60,7 +60,27 @@ const reportsService = {
         const packInData = await PackIn.find(packInQuery);
         const packOutData = await PackOut.find(packOutQuery);
 
-        data = [...packInData, ...packOutData].sort(
+        const mergedData = [...packInData, ...packOutData];
+
+        const uniqueData = [];
+        const seen = new Set();
+
+        mergedData.forEach((item) => {
+          const invoiceNo =
+            item.invoice?.invoice_number || item.invoice_number || "";
+
+          const packageId =
+            item.package?.package_id || item.package_id || "";
+
+          const key = `${invoiceNo}_${packageId}`;
+
+          if (!seen.has(key)) {
+            seen.add(key);
+            uniqueData.push(item);
+          }
+        });
+
+        data = uniqueData.sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
         );
 
