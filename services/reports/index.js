@@ -15,10 +15,9 @@ const reportsService = {
         is_deleted: false
       };
 
-      // Optional Filters
-      if (customer) {
-        query.customer_name = customer;
-      }
+if (customer) {
+  query.customer_name = { $regex: customer, $options: "i" };
+}
 
       if (invoice) {
         query.invoice_number = invoice;
