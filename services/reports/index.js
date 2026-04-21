@@ -28,7 +28,7 @@ if (customer) {
       }
 
       if (place) {
-        query.place = place;
+        query.place_id = place;
       }
 
       // Date Filter
